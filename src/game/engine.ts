@@ -79,7 +79,7 @@ export function updateGame(state: GameState): GameState {
   let newStage = state.plant.stage;
   let newStructure = [...state.plant.structure]; // Always work with a copy
 
-  if (state.plant.hydration > GROWTH_HYDRATION_THRESHOLD && STAGE_PROGRESSION[state.plant.stage]) {
+  if (newHydration > GROWTH_HYDRATION_THRESHOLD && STAGE_PROGRESSION[state.plant.stage]) {
     newGrowth += (GROWTH_RATE_PER_HOUR * elapsedHours);
 
     // Update structure based on growth *within* a stage
