@@ -20,8 +20,10 @@ Mature Plant: The plant becomes bushier, with a more complex structure and a gre
 Flowering: Small, delicate flowers appear on the plant, signaling peak health and maturity.
 Harvesting: Leaves can be plucked from the mature plant.
 Neglect & Recovery:
-Withering: If the plant's needs (primarily water) are not met, it will begin to wither visually—leaves will droop and turn brown.
-Death & Reset: Prolonged neglect will cause the plant to die. The game will then reset, allowing the user to start over with a new seed.
+Withering: If the plant's needs (primarily water) are not met, it will begin to wither visually. This happens sequentially, starting with the newest growth (leaves, flowers) and progressing to older parts. Individual parts will droop and turn brown.
+Pruning: Watering alone will not save a withered plant. The user must actively prune the dead parts by clicking on them.
+Recovery: Once all withered parts are removed and the plant is adequately watered, it will resume growth.
+Death & Reset: Prolonged neglect will cause the entire plant to wither and die. The game will then reset, allowing the user to start over with a new seed.
 
 3. Core Mechanics & Gameplay
 Real-Time Persistence: The plant's state (age, hydration, health, growth progress) is saved in the browser. When the user returns, the game will calculate the changes that occurred during their absence.
@@ -35,6 +37,7 @@ Fertilization:
 Users can apply different types of natural fertilizers for temporary boosts.
 Harvesting & High Score:
 Once the plant is mature, users can pluck individual tea leaves, tracked via a simple high score.
+Pruning: When parts of the plant have withered due to lack of water, users can click on them to remove them. This is a necessary step for the plant's recovery.
 
 4. Environmental Factors & Events
 Real-Time Seasons & Weather: The environment will reflect real-world seasons and integrate with local weather data (with user permission).
