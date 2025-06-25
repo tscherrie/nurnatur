@@ -40,6 +40,33 @@ const soilImagePaths = [
 
 const planterImagePath = '/assets/images/planter/acre_soil.png';
 
+const backgroundPaths = {
+  sunrise: '/assets/images/backgrounds/sunrise.png',
+  mid_morning: '/assets/images/backgrounds/mid_morning.png',
+  noon: '/assets/images/backgrounds/noon.png',
+  mid_afternoon: '/assets/images/backgrounds/mid_afternoon.png',
+  sunset: '/assets/images/backgrounds/sunset.png',
+  day_rain: '/assets/images/backgrounds/day_rain.png',
+  night_clear: '/assets/images/backgrounds/night_clear.png',
+  night_rain: '/assets/images/backgrounds/night_rain.png',
+};
+
+function getBackgroundImage(isDay: boolean, isRaining: boolean, dayPercentage: number): string {
+  if (isRaining) {
+    return isDay ? backgroundPaths.day_rain : backgroundPaths.night_rain;
+  }
+
+  if (isDay) {
+    if (dayPercentage < 0.1) return backgroundPaths.sunrise;
+    if (dayPercentage < 0.4) return backgroundPaths.mid_morning;
+    if (dayPercentage < 0.6) return backgroundPaths.noon;
+    if (dayPercentage < 0.9) return backgroundPaths.mid_afternoon;
+    return backgroundPaths.sunset;
+  } else {
+    return backgroundPaths.night_clear;
+  }
+}
+
 function App() {
   const [gameState, setGameState] = useState<GameState>(loadGame());
   const [hasPlantedSeed, setHasPlantedSeed] = useState(() => {
@@ -385,6 +412,7 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [soilImages, setSoilImages] = useState<{[key: string]: HTMLImageElement}>({});
   const [planterImage, setPlanterImage] = useState<HTMLImageElement | null>(null);
+  const [backgroundImages, setBackgroundImages] = useState<{[key: string]: HTMLImageElement}>({});
 
   // Preload images
   useEffect(() => {
@@ -399,6 +427,14 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
     const pImg = new Image();
     pImg.src = planterImagePath;
     setPlanterImage(pImg);
+
+    const bgImages: {[key: string]: HTMLImageElement} = {};
+    Object.values(backgroundPaths).forEach(path => {
+        const img = new Image();
+        img.src = path;
+        bgImages[path] = img;
+    });
+    setBackgroundImages(bgImages);
   }, []);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -516,50 +552,11 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
     const isRaining = weather?.isRaining ?? false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Draw Sky & Weather
-    // Calculate sun position
-    const sunX = (canvas.width + 200) * dayPercentage - 100; // Move from left to right
-    const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (SOIL_LEVEL - 50);
-
-    // Dynamic sky color based on sun position
-    let skyColor = isDay ? '#87CEEB' : '#000033'; // Default day/night
-    if (isDay) {
-      const noonColor = [135, 206, 235]; // #87CEEB
-      const horizonColor = [255, 165, 0]; // orange
-      const intensity = Math.sin(dayPercentage * Math.PI);
-      const r = noonColor[0] + (horizonColor[0] - noonColor[0]) * (1 - intensity);
-      const g = noonColor[1] + (horizonColor[1] - noonColor[1]) * (1 - intensity);
-      const b = noonColor[2] + (horizonColor[2] - noonColor[2]) * (1 - intensity);
-      skyColor = `rgb(${r}, ${g}, ${b})`;
-    }
-    if (isRaining) {
-      skyColor = isDay ? '#a0b0b8' : '#2c3e50';
-    }
-
-    ctx.fillStyle = skyColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw Sun or Moon
-    if (isDay) {
-      ctx.fillStyle = 'yellow';
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      ctx.arc(canvas.width - 50, 50, 30, 0, Math.PI * 2); // Fixed moon position
-      ctx.fill();
-    }
-
-    // Draw Rain
-    if (isRaining) {
-      ctx.fillStyle = 'rgba(174,194,224,0.5)';
-      for (let i = 0; i < 100; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        ctx.fillRect(x, y, 1, 10);
-      }
+    // 1. Draw Background
+    const bgImageSrc = getBackgroundImage(isDay, isRaining, dayPercentage);
+    const bgImage = backgroundImages[bgImageSrc];
+    if (bgImage?.complete) {
+      ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
     }
 
     // 2. Draw Soil
@@ -606,7 +603,7 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
       ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, 120);
     }
 
-  }, [gameState, hasPlantedSeed, soilImages, planterImage]);
+  }, [gameState, hasPlantedSeed, soilImages, planterImage, backgroundImages]);
 
   return (
     <canvas
