@@ -171,24 +171,6 @@ function App() {
     }
   };
 
-  const handleWaterPlant = () => {
-    // Prevent watering if there's no seed planted
-    if (!hasPlantedSeed) return;
-
-    setGameState(prevState => {
-      const newState = {
-        ...prevState,
-        plant: {
-          ...prevState.plant,
-          hydration: Math.min(1, prevState.plant.hydration + 0.1),
-          lastWatered: new Date(),
-        },
-      };
-      saveGame(newState);
-      return newState;
-    });
-  };
-
   const handleToggleDayNight = () => {
     setGameState(prevState => {
       const newState = {
@@ -230,19 +212,6 @@ function App() {
 
   const handleToggleMute = () => {
     setIsMuted(!isMuted);
-  };
-
-  const handleReset = () => {
-    // Also reset any debug overrides
-    if (IS_DEBUG_MODE) {
-      const slider = document.getElementById('time-slider') as HTMLInputElement;
-      if (slider) {
-        slider.value = '0';
-      }
-    }
-    const freshState = { ...initialGameState };
-    setGameState(freshState);
-    saveGame(freshState);
   };
 
   useEffect(() => {
