@@ -440,8 +440,14 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
 
     if (!hasPlantedSeed) {
       setHasPlantedSeed(true);
-      // We don't need to change the game state here,
-      // as the timer will now start running updates.
+      // Give the plant a tiny bit of growth so the reset logic doesn't fire
+      setGameState(prevState => ({
+        ...prevState,
+        plant: {
+          ...prevState.plant,
+          growth: 0.01,
+        }
+      }));
       // Start music on first interaction
       document.querySelector('audio')?.play().catch(_e => console.log("Audio play failed until next interaction"));
       return;
