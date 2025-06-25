@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { GameState, LeafData, BudData } from './game/state';
 import { initialGameState } from './game/state';
-import { loadGame, saveGame, updateGame, GROWTH_HYDRATION_THRESHOLD } from './game/engine';
+import { loadGame, saveGame, updateGame } from './game/engine';
 import { IS_DEBUG_MODE } from './game/debug';
 import { GAME_WIDTH, GAME_HEIGHT, SOIL_LEVEL, PLANT_BASE_X, PLANT_BASE_Y } from './game/constants';
 
