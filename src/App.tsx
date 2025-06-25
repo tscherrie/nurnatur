@@ -226,7 +226,8 @@ function App() {
         if (newState === null) { // Game over signal
           const freshState = {
             ...initialGameState,
-            lastUpdate: new Date(), // Create a fresh timestamp
+            environment: prevState.environment, // Keep weather and location
+            lastUpdate: new Date(),
           };
           saveGame(freshState);
           return freshState;
