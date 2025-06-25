@@ -251,7 +251,7 @@ function App() {
           debugTimeOverride={debugTimeOverride}
         />
       </main>
-    </div>
+      </div>
   );
 }
 
@@ -390,7 +390,7 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
 
     // 1. Draw Sky & Weather
     // Calculate sun position
-    const sunX = (canvas.width + 200) * (1 - dayPercentage) - 100; // Move from right to left
+    const sunX = (canvas.width + 200) * dayPercentage - 100; // Move from left to right
     const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (SOIL_LEVEL - 50);
 
     // Dynamic sky color based on sun position
