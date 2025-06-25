@@ -5,6 +5,12 @@ import { loadGame, saveGame, updateGame, GROWTH_HYDRATION_THRESHOLD } from './ga
 import { IS_DEBUG_MODE } from './game/debug';
 import { GAME_WIDTH, GAME_HEIGHT, SOIL_LEVEL } from './game/constants';
 
+const musicTracks = {
+  day: Array.from({ length: 4 }, (_, i) => `/assets/audio/day_${i + 1}.mp3`),
+  rain: Array.from({ length: 2 }, (_, i) => `/assets/audio/rain_${i + 1}.mp3`),
+  night: Array.from({ length: 4 }, (_, i) => `/assets/audio/night_${i + 1}.mp3`),
+};
+
 function App() {
   const [gameState, setGameState] = useState<GameState>(loadGame());
   const [hasPlantedSeed, setHasPlantedSeed] = useState(() => {
@@ -15,6 +21,8 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [locationInput, setLocationInput] = useState("");
   const [debugTimeOverride, setDebugTimeOverride] = useState<Date | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [currentTrack, setCurrentTrack] = useState<string>('');
 
   // Function to determine if it's day or night
   const isDayTime = () => {
@@ -198,6 +206,32 @@ function App() {
     return () => clearInterval(timer);
   }, [hasPlantedSeed]);
 
+  useEffect(() => {
+    // --- Audio Control ---
+    const audio = audioRef.current;
+    if (!audio || !hasPlantedSeed) return;
+
+    const { isDay } = gameState.environment;
+    const isRaining = gameState.environment.weather?.isRaining ?? false;
+    let newTrackCategory: 'day' | 'rain' | 'night';
+
+    if (isRaining) {
+      newTrackCategory = 'rain';
+    } else if (isDay) {
+      newTrackCategory = 'day';
+    } else {
+      newTrackCategory = 'night';
+    }
+    
+    const potentialTracks = musicTracks[newTrackCategory];
+    if (!potentialTracks.some(track => currentTrack.includes(track))) {
+      const newTrack = potentialTracks[Math.floor(Math.random() * potentialTracks.length)];
+      setCurrentTrack(newTrack);
+      audio.src = newTrack;
+      audio.play().catch(error => console.error("Audio playback failed:", error));
+    }
+  }, [gameState.environment.isDay, gameState.environment.weather?.isRaining, hasPlantedSeed]);
+
   return (
     <div className="App">
       {IS_DEBUG_MODE && (
@@ -251,7 +285,8 @@ function App() {
           debugTimeOverride={debugTimeOverride}
         />
       </main>
-      </div>
+      <audio ref={audioRef} loop />
+    </div>
   );
 }
 
@@ -337,6 +372,8 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
       setHasPlantedSeed(true);
       // We don't need to change the game state here,
       // as the timer will now start running updates.
+      // Start music on first interaction
+      document.querySelector('audio')?.play().catch(e => console.log("Audio play failed until next interaction"));
       return;
     }
 

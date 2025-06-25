@@ -1,91 +1,91 @@
-filename,prompt,seed
-soil_dry_light,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. A small patch of garden soil (dry, light‑graphite soil, lightly cracked), slight top‑down angle.",
-soil_dry_medium,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. A small patch of garden soil (dry, medium‑dark soil, visible cracks), slight top‑down angle.",
-soil_moist,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. A small patch of garden soil (moist rich soil, darker tone with subtle sheen), slight top‑down angle.",
-soil_wet,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. A small patch of garden soil (wet soil, dark clumps and slight reflections), slight top‑down angle.",
-soil_saturated_puddle,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. A small patch of garden soil (saturated soil with a small reflective puddle), slight top‑down angle.",
-seed_whole,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Single tea seed resting on soil, intact, spherical.",
-seed_half_buried,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea seed half embedded in soil, subtle shadow.",
-sprout_single_leaf,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Delicate tea sprout with one tiny leaf emerging from soil.",
-sprout_double_leaf,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea sprout with two opposite leaves emerging from soil.",
-stem_straight_age1,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""straight"", age level 1, slender.",
-stem_straight_age2,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""straight"", age level 2, slender.",
-stem_straight_age3,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""straight"", age level 3, slender.",
-stem_straight_age4,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""straight"", age level 4, slender.",
-stem_branch_left_age1,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""branch left"", age level 1, slender.",
-stem_branch_left_age2,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""branch left"", age level 2, slender.",
-stem_branch_left_age3,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""branch left"", age level 3, slender.",
-stem_branch_left_age4,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""branch left"", age level 4, slender.",
-stem_branch_right_age1,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""branch right"", age level 1, slender.",
-stem_branch_right_age2,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""branch right"", age level 2, slender.",
-stem_branch_right_age3,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""branch right"", age level 3, slender.",
-stem_branch_right_age4,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Tea plant stem segment ""branch right"", age level 4, slender.",
-leaf_small_plain,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Single small tea leaf, healthy, front view.",
-leaf_small_bitten,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small tea leaf with a tiny bite taken out of the edge.",
-leaf_medium,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Medium‑size tea leaf, healthy, gentle curve.",
-leaf_large,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Large mature tea leaf, detailed veins.",
-leaf_harvested_single,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Harvested tea leaf, slightly curled, ready for drying.",
-flower_bud_closed_classic,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. closed tea flower bud in classic style on tea plant.",
-flower_bud_closed_delicate,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. closed tea flower bud in delicate style on tea plant.",
-flower_bud_closed_bloom,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. closed tea flower bud in bloom style on tea plant.",
-flower_bud_half_classic,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. half‑open tea flower bud in classic style on tea plant.",
-flower_bud_half_delicate,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. half‑open tea flower bud in delicate style on tea plant.",
-flower_bud_half_bloom,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. half‑open tea flower bud in bloom style on tea plant.",
-flower_flower_full_front_classic,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. fully open tea blossom, front view in classic style on tea plant.",
-flower_flower_full_front_delicate,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. fully open tea blossom, front view in delicate style on tea plant.",
-flower_flower_full_front_bloom,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. fully open tea blossom, front view in bloom style on tea plant.",
-flower_flower_full_side_classic,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. fully open tea blossom, side view in classic style on tea plant.",
-flower_flower_full_side_delicate,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. fully open tea blossom, side view in delicate style on tea plant.",
-flower_flower_full_side_bloom,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. fully open tea blossom, side view in bloom style on tea plant.",
-overlay_morning_glow_spring,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing soft morning glow in spring.",
-overlay_morning_glow_summer,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing soft morning glow in summer.",
-overlay_morning_glow_autumn,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing soft morning glow in autumn.",
-overlay_morning_glow_winter,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing soft morning glow in winter.",
-overlay_noon_light_spring,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing bright noon light in spring.",
-overlay_noon_light_summer,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing bright noon light in summer.",
-overlay_noon_light_autumn,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing bright noon light in autumn.",
-overlay_noon_light_winter,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing bright noon light in winter.",
-overlay_dusk_shade_spring,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing muted dusk shade in spring.",
-overlay_dusk_shade_summer,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing muted dusk shade in summer.",
-overlay_dusk_shade_autumn,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing muted dusk shade in autumn.",
-overlay_dusk_shade_winter,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Transparent overlay representing muted dusk shade in winter.",
-bg_spring,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Garden backdrop sketch showing subtle spring scenery, distant foliage.",
-bg_summer,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Garden backdrop sketch showing subtle summer scenery, distant foliage.",
-bg_autumn,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Garden backdrop sketch showing subtle autumn scenery, distant foliage.",
-bg_winter,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Garden backdrop sketch showing subtle winter scenery, distant foliage.",
-ui_btn_water,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Icon of watering can inside circular outline.",
-ui_btn_fertilizer,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Icon of compost scoop inside circular outline.",
-ui_btn_prune,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Icon of pruning shears inside circular outline.",
-ui_icon_leaf,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small icon of single tea leaf.",
-ui_icon_drop,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small icon of water droplet.",
-ui_icon_clock,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small icon of clock face.",
-ui_icon_trophy,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small icon of trophy cup.",
-ui_alert_good,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Rounded rectangle banner background, positive theme.",
-ui_alert_warning,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Rounded rectangle banner background, warning theme.",
-ui_alert_bad,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Rounded rectangle banner background, negative theme.",
-ladybug_01,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Frame 1 of 4 for ladybug crawling animation, side view.",
-ladybug_02,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Frame 2 of 4 for ladybug crawling animation, side view.",
-ladybug_03,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Frame 3 of 4 for ladybug crawling animation, side view.",
-ladybug_04,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Frame 4 of 4 for ladybug crawling animation, side view.",
-aphid_cluster_01,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small cluster of aphids on tea leaf, density variant 1.",
-aphid_cluster_02,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small cluster of aphids on tea leaf, density variant 2.",
-goat_idle,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Cartoon goat standing idle, side view.",
-goat_chew_1,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Cartoon goat chewing, frame 1 of 3.",
-goat_chew_2,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Cartoon goat chewing, frame 2 of 3.",
-goat_chew_3,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Cartoon goat chewing, frame 3 of 3.",
-goat_scared,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Cartoon goat startled, jumping back.",
-drop_01,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Single water droplet shape, variant 1.",
-drop_02,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Single water droplet shape, variant 2.",
-drop_03,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Single water droplet shape, variant 3.",
-drop_04,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Single water droplet shape, variant 4.",
-drop_05,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Single water droplet shape, variant 5.",
-splash_01,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Water splash, frame 1 of 3.",
-splash_02,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Water splash, frame 2 of 3.",
-splash_03,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Water splash, frame 3 of 3.",
-fert_puff_01,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small dust fertilizer puff, frame 1 of 3.",
-fert_puff_02,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small dust fertilizer puff, frame 2 of 3.",
-fert_puff_03,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Small dust fertilizer puff, frame 3 of 3.",
-badge_first_leaf,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Circular badge celebrating first leaf harvested.",
-badge_full_bloom,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Circular badge celebrating full plant bloom.",
-badge_100_leaves,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Circular badge for harvesting 100 leaves.",
-logo_nur_natur,"Finely shaded graphite pencil sketch, cross‑hatched, on clean ivory paper, no color, no text, no signature, 300 dpi. Hand‑lettered title 'Nur Natur', elegant cursive lettering.",
+filename,prompt
+soil_dry_light,"dry light-coloured soil with subtle cracks"
+soil_dry_medium,"slightly darker more humid soil, still cracks visible but less"
+soil_moist,"soil now moist and richer, faint sheen on the surface"
+soil_wet,"soil wet and dark with small shiny patches"
+soil_saturated_puddle,"soil completely saturated, tiny reflective puddle forming"
+seed_whole,"single intact tea seed resting on the soil"
+seed_half_buried,"tea seed half-buried in the soil"
+sprout_single_leaf,"tiny tea sprout with one small leaf breaking through"
+sprout_double_leaf,"sprout now shows two opposite leaves"
+stem_straight_age1,"very young straight stem, very thin"
+stem_straight_age2,"straight stem slightly taller and thicker"
+stem_straight_age3,"straight stem noticeably taller and firmer"
+stem_straight_age4,"straight stem at full height and mature thickness"
+stem_branch_left_age1,"left-branching stem segment, very young and thin"
+stem_branch_left_age2,"left branch a bit longer and thicker"
+stem_branch_left_age3,"left branch moderate thickness and length"
+stem_branch_left_age4,"left branch fully mature and sturdy"
+stem_branch_right_age1,"right-branching stem segment, very young and thin"
+stem_branch_right_age2,"right branch a bit longer and thicker"
+stem_branch_right_age3,"right branch moderate thickness and length"
+stem_branch_right_age4,"right branch fully mature and sturdy"
+leaf_small_plain,"single small healthy tea leaf, front view"
+leaf_small_bitten,"small leaf with a tiny bite on the edge"
+leaf_medium,"leaf medium size with a gentle curve"
+leaf_large,"leaf now large and mature with visible veins"
+leaf_harvested_single,"harvested tea leaf, slightly curled"
+flower_bud_closed_classic,"closed tea flower bud, classic petal shape"
+flower_bud_closed_delicate,"closed tea bud in a more delicate style"
+flower_bud_closed_bloom,"closed bud with fuller bloom style"
+flower_bud_half_classic,"half-open tea bud, classic style"
+flower_bud_half_delicate,"half-open bud, delicate style"
+flower_bud_half_bloom,"half-open bud, bloom style"
+flower_full_front_classic,"fully open tea blossom front view, classic form"
+flower_full_front_delicate,"fully open blossom front view, delicate form"
+flower_full_front_bloom,"fully open blossom front view, bloom style petals"
+flower_full_side_classic,"fully open blossom side view, classic form"
+flower_full_side_delicate,"fully open blossom side view, delicate form"
+flower_full_side_bloom,"fully open blossom side view, bloom style petals"
+overlay_morning_glow_spring,"soft morning glow overlay, spring feeling"
+overlay_morning_glow_summer,"morning glow overlay, warmer summer tint"
+overlay_morning_glow_autumn,"morning glow overlay, gentle autumn warmth"
+overlay_morning_glow_winter,"morning glow overlay, cool winter tone"
+overlay_noon_light_spring,"bright noon light overlay, spring clarity"
+overlay_noon_light_summer,"noon light overlay, intense summer brightness"
+overlay_noon_light_autumn,"noon light overlay, muted autumn colour"
+overlay_noon_light_winter,"noon light overlay, crisp winter light"
+overlay_dusk_shade_spring,"soft dusk shade overlay, spring"
+overlay_dusk_shade_summer,"dusk shade overlay, summer softness"
+overlay_dusk_shade_autumn,"dusk shade overlay, deeper autumn tone"
+overlay_dusk_shade_winter,"dusk shade overlay, cold winter blue"
+bg_spring,"garden backdrop with subtle spring blooms"
+bg_summer,"garden backdrop lush with summer greenery"
+bg_autumn,"garden backdrop with autumn colours and fallen leaves"
+bg_winter,"garden backdrop with bare branches and light frost"
+ui_btn_water,"icon of a watering can inside a circle"
+ui_btn_fertilizer,"icon of a compost scoop inside a circle"
+ui_btn_prune,"icon of pruning shears inside a circle"
+ui_icon_leaf,"small icon of a tea leaf"
+ui_icon_drop,"small icon of a water droplet"
+ui_icon_clock,"small icon of a clock face"
+ui_icon_trophy,"small icon of a trophy cup"
+ui_alert_good,"rounded rectangle banner, positive feel"
+ui_alert_warning,"rounded rectangle banner, warning feel"
+ui_alert_bad,"rounded rectangle banner, negative feel"
+ladybug_01,"ladybug crawl animation frame 1"
+ladybug_02,"ladybug crawl frame 2"
+ladybug_03,"ladybug crawl frame 3"
+ladybug_04,"ladybug crawl frame 4"
+aphid_cluster_01,"small aphid cluster variant 1"
+aphid_cluster_02,"denser aphid cluster variant 2"
+goat_idle,"cartoon goat standing idle"
+goat_chew_1,"goat chewing frame 1"
+goat_chew_2,"goat chewing frame 2"
+goat_chew_3,"goat chewing frame 3"
+goat_scared,"goat startled and jumping back"
+drop_01,"single water droplet variant 1"
+drop_02,"single water droplet variant 2"
+drop_03,"single water droplet variant 3"
+drop_04,"single water droplet variant 4"
+drop_05,"single water droplet variant 5"
+splash_01,"water splash frame 1"
+splash_02,"water splash frame 2"
+splash_03,"water splash frame 3"
+fert_puff_01,"fertilizer dust puff frame 1"
+fert_puff_02,"fertilizer dust puff frame 2"
+fert_puff_03,"fertilizer dust puff frame 3"
+badge_first_leaf,"badge for first leaf harvested"
+badge_full_bloom,"badge for full plant bloom"
+badge_100_leaves,"badge for harvesting 100 leaves"
+logo_nur_natur,"hand-lettered title 'Nur Natur'"
