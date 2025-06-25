@@ -663,12 +663,14 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
     ctx.font = '16px sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(`Tea Leaves Harvested: ${gameState.teaLeavesHarvested}`, 10, 20);
-    ctx.fillText(`Hydration: ${(gameState.plant.hydration * 100).toFixed(0)}%`, 10, 40);
-    ctx.fillText(`Stage: ${gameState.plant.stage}`, 10, 60);
-    ctx.fillText(`Growth: ${gameState.plant.growth.toFixed(2)}`, 10, 80);
+    if (IS_DEBUG_MODE) {
+      ctx.fillText(`Hydration: ${(gameState.plant.hydration * 100).toFixed(0)}%`, 10, 40);
+      ctx.fillText(`Stage: ${gameState.plant.stage}`, 10, 60);
+      ctx.fillText(`Growth: ${gameState.plant.growth.toFixed(2)}`, 10, 80);
+    }
     if (gameState.environment.weather) {
-      ctx.fillText(`Temp: ${gameState.environment.weather.temperature}°C`, 10, 100);
-      ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, 120);
+      ctx.fillText(`Temp: ${gameState.environment.weather.temperature}°C`, 10, IS_DEBUG_MODE ? 100 : 40);
+      ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, IS_DEBUG_MODE ? 120 : 60);
     }
 
   }, [gameState, hasPlantedSeed, soilImages, planterImage, backgroundImages]);
