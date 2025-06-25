@@ -31,6 +31,8 @@ export function loadGame(): GameState {
         ...initialGameState.plant,
         ...savedState.plant,
       },
+      // Keep the saved environment
+      environment: savedState.environment ? { ...initialGameState.environment, ...savedState.environment } : initialGameState.environment,
     };
     
     // Dates are not automatically converted from JSON, so we need to parse them back
@@ -38,6 +40,12 @@ export function loadGame(): GameState {
       migratedState.plant.lastWatered = new Date(migratedState.plant.lastWatered);
     }
     migratedState.lastUpdate = new Date(migratedState.lastUpdate);
+    if (migratedState.environment.sunrise) {
+      migratedState.environment.sunrise = new Date(migratedState.environment.sunrise).toISOString();
+    }
+    if (migratedState.environment.sunset) {
+      migratedState.environment.sunset = new Date(migratedState.environment.sunset).toISOString();
+    }
 
     return migratedState;
   } catch (error) {
@@ -45,14 +53,6 @@ export function loadGame(): GameState {
     return initialGameState;
   }
 }
-
-const STAGE_PROGRESSION: Partial<Record<PlantStage, PlantStage>> = {
-  Seed: 'Sprout',
-  Sprout: 'Young',
-  Young: 'Mature',
-  Mature: 'Flowering',
-  Flowering: 'Harvestable',
-};
 
 // Growth thresholds for different milestones
 const GROWTH_THRESHOLDS: Record<PlantStage, number> = {
@@ -233,7 +233,6 @@ function updateGrowthAndStructure(state: GameState, elapsedHours: number, curren
 }
 
 function updateState(
-  state: GameState, 
   currentGrowth: number, 
   currentStructure: PlantSegment[]
 ) {
@@ -281,7 +280,7 @@ export function updateGame(state: GameState, sunIntensity: number): GameState | 
     return null;
   }
 
-  const { newGrowth, newStage } = updateState(state, growthAfterUpdate, newStructure);
+  const { newGrowth, newStage } = updateState(growthAfterUpdate, newStructure);
 
   return {
     ...state,

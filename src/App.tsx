@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { GameState, LeafData, BudData, PlantSegment } from './game/state';
+import type { GameState, LeafData, BudData } from './game/state';
 import { initialGameState } from './game/state';
 import { loadGame, saveGame, updateGame, GROWTH_HYDRATION_THRESHOLD } from './game/engine';
 import { IS_DEBUG_MODE } from './game/debug';
