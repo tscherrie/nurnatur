@@ -576,8 +576,7 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
 
     // Draw Rain
     if (isRaining) {
-      const rainColor = isDay ? 'rgba(70, 90, 120, 0.7)' : 'rgba(174, 194, 224, 0.5)';
-      ctx.fillStyle = rainColor;
+      ctx.fillStyle = 'rgba(230, 240, 255, 0.8)'; // Use a consistent, nearly-white color for good contrast
       for (let i = 0; i < 100; i++) {
         const x = Math.random() * canvas.width;
         const y = Math.random() * canvas.height;
