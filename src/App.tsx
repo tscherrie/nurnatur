@@ -37,14 +37,15 @@ function App() {
         lon = geoData.results[0].longitude;
         city = geoData.results[0].name;
       } else {
-        const ipResponse = await fetch('https://freegeoip.app/json/');
+        const ipResponse = await fetch('https://ipinfo.io/json');
         if (!ipResponse.ok) {
           console.error("Failed to get location from IP:", ipResponse.statusText);
           return; // Silently fail for IP lookup
         }
         const ipData = await ipResponse.json();
-        lat = ipData.latitude;
-        lon = ipData.longitude;
+        const [latStr, lonStr] = ipData.loc.split(',');
+        lat = parseFloat(latStr);
+        lon = parseFloat(lonStr);
         city = ipData.city;
       }
 
