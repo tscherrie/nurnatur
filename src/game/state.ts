@@ -1,8 +1,7 @@
 // src/game/state.ts
 
 export type PlantStage = 
-  | 'Soil'
-  | 'Seed' 
+  | 'Seed'
   | 'Sprout' 
   | 'Young' 
   | 'Mature' 
@@ -10,42 +9,33 @@ export type PlantStage =
   | 'Harvestable'
   | 'Withering';
 
-export type StemData = {
+export type BaseSegment = {
   id: string;
-  type: 'stem';
   x: number;
   y: number;
+  withered: boolean;
+};
+
+export type StemData = BaseSegment & {
+  type: 'stem';
   height: number;
   width: number;
-  withered: boolean;
 };
 
-export type LeafData = {
-  id: string;
+export type LeafData = BaseSegment & {
   type: 'leaf';
-  x: number; // The x-coordinate where the leaf is attached
-  y: number; // The y-coordinate where the leaf is attached
   size: number;
   angle: number; // The angle of the leaf in radians
-  withered: boolean;
 };
 
-export type FlowerData = {
-  id: string;
+export type FlowerData = BaseSegment & {
   type: 'flower';
-  x: number;
-  y: number;
   size: number;
-  withered: boolean;
 };
 
-export type BudData = {
-  id: string;
+export type BudData = BaseSegment & {
   type: 'bud';
-  x: number;
-  y: number;
   size: number;
-  withered: boolean;
   leafId: string; // Reference to which leaf this bud is attached to
 };
 
@@ -64,11 +54,21 @@ export interface GameState {
   plant: PlantState;
   lastUpdate: Date;
   teaLeavesHarvested: number;
+  environment: {
+    isDay: boolean;
+    weather: {
+      temperature: number; // in Celsius
+      isRaining: boolean;
+    } | null;
+    userLocation: string | null;
+    sunrise: string | null; // ISO date string
+    sunset: string | null;  // ISO date string
+  };
 }
 
 export const initialGameState: GameState = {
   plant: {
-    stage: 'Soil',
+    stage: 'Seed',
     growth: 0,
     hydration: 0.5,
     lastWatered: null,
@@ -77,4 +77,11 @@ export const initialGameState: GameState = {
   },
   lastUpdate: new Date(),
   teaLeavesHarvested: 0,
+  environment: {
+    isDay: true,
+    weather: null,
+    userLocation: null,
+    sunrise: null,
+    sunset: null,
+  },
 }; 

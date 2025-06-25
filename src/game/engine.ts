@@ -1,4 +1,4 @@
-import type { GameState, PlantStage, LeafData, FlowerData, BudData } from './state';
+import type { GameState, PlantStage, LeafData, FlowerData, BudData, PlantSegment } from './state';
 import { initialGameState } from './state';
 import { IS_DEBUG_MODE } from './debug';
 import { PLANT_BASE_X, PLANT_BASE_Y } from './constants';
@@ -55,13 +55,18 @@ const STAGE_PROGRESSION: Partial<Record<PlantStage, PlantStage>> = {
 };
 
 // Growth thresholds for different milestones
-const GROWTH_THRESHOLDS = {
-  SPROUT: 1,
-  YOUNG: 2,
-  MATURE: 3,
-  FLOWERING: 4,
-  HARVESTABLE: 5,
-  // Structure milestones
+const GROWTH_THRESHOLDS: Record<PlantStage, number> = {
+  Seed: 0,
+  Sprout: 1,
+  Young: 2,
+  Mature: 3,
+  Flowering: 4,
+  Harvestable: 5,
+  Withering: Infinity, // A special case
+};
+
+// Structure-specific growth points
+const STRUCTURE_GROWTH_POINTS = {
   STEM_FULL_HEIGHT: 2.5,
   LEAF_1: 3.2,
   LEAF_2: 3.4,
@@ -88,25 +93,34 @@ const REAL_DEATH_TIMER_HOURS = 24;
 const DEBUG_DEATH_TIMER_HOURS = 30 / 3600; // 30 seconds
 const DEATH_TIMER_HOURS = IS_DEBUG_MODE ? DEBUG_DEATH_TIMER_HOURS : REAL_DEATH_TIMER_HOURS;
 
+const DAY_GROWTH_MULTIPLIER = 1.5; // Plants grow up to 50% faster during the day
+const DEHYDRATION_TEMP_BASE = 20; // Celsius
+const DEHYDRATION_TEMP_FACTOR = 0.05; // 5% change in dehydration per degree above/below base
+
 // New constant: How many hours of zero hydration it takes for one plant part to wither.
 const REAL_WITHER_RATE_PER_PART_HOURS = 4;
 const DEBUG_WITHER_RATE_PER_PART_HOURS = 5 / 3600; // 5 seconds per part in debug
 const WITHER_RATE_PER_PART_HOURS = IS_DEBUG_MODE ? DEBUG_WITHER_RATE_PER_PART_HOURS : REAL_WITHER_RATE_PER_PART_HOURS;
 
-export function updateGame(state: GameState): GameState | null {
-  const now = new Date();
-  const elapsedHours = (now.getTime() - state.lastUpdate.getTime()) / (1000 * 60 * 60);
+function updateDehydrationAndWithering(state: GameState, elapsedHours: number) {
+  const { weather } = state.environment;
 
-  // --- Dehydration ---
-  let newHydration = state.plant.hydration - (DEHYDRATION_RATE_PER_HOUR * elapsedHours);
+  // If it's raining, the plant is fully hydrated.
+  if (weather?.isRaining) {
+    return { newHydration: 1, newTimeAtZeroHydration: 0, newStructure: state.plant.structure };
+  }
+
+  let dehydrationRate = DEHYDRATION_RATE_PER_HOUR;
+  if (weather) {
+    const tempMultiplier = 1 + (weather.temperature - DEHYDRATION_TEMP_BASE) * DEHYDRATION_TEMP_FACTOR;
+    dehydrationRate *= Math.max(0.5, tempMultiplier); // Don't let it go below half rate or get too extreme
+  }
+
+  let newHydration = state.plant.hydration - (dehydrationRate * elapsedHours);
   newHydration = Math.max(0, newHydration);
 
-  let newGrowth = state.plant.growth;
-  let newStage = state.plant.stage;
-  let newStructure = [...state.plant.structure];
-
-  // --- Withering and Death ---
   let newTimeAtZeroHydration = state.plant.timeAtZeroHydration;
+  let newStructure = [...state.plant.structure];
 
   if (newHydration <= 0) {
     newTimeAtZeroHydration += elapsedHours;
@@ -130,38 +144,53 @@ export function updateGame(state: GameState): GameState | null {
     newTimeAtZeroHydration = 0;
   }
 
-  const allPartsWithered = newStructure.length > 0 && newStructure.every(p => p.withered);
-  if (allPartsWithered) {
-    console.log("All plant parts withered. Resetting game.");
-    return null;
-  }
+  return { newHydration, newTimeAtZeroHydration, newStructure };
+}
 
-  // --- Growth and Structure Building ---
+function updateGrowthAndStructure(state: GameState, elapsedHours: number, currentHydration: number, currentStructure: PlantSegment[], sunIntensity: number) {
+  let newGrowth = state.plant.growth;
+  let newStructure = [...currentStructure];
+
   const isAnyPartWithered = newStructure.some(p => p.withered);
 
-  if (!isAnyPartWithered && newHydration > GROWTH_HYDRATION_THRESHOLD) {
-    newGrowth += (GROWTH_RATE_PER_HOUR * elapsedHours);
+  if (!isAnyPartWithered && currentHydration > GROWTH_HYDRATION_THRESHOLD) {
+    // The growth multiplier is now a mix of the base rate and the boost from sun intensity
+    const growthMultiplier = 1 + (DAY_GROWTH_MULTIPLIER - 1) * sunIntensity;
+    const growthRate = GROWTH_RATE_PER_HOUR * growthMultiplier;
+    newGrowth += (growthRate * elapsedHours);
 
     const mainStem = newStructure.find(s => s.type === 'stem');
 
-    if (newGrowth >= GROWTH_THRESHOLDS.YOUNG && !mainStem) {
+    if (newGrowth >= GROWTH_THRESHOLDS.Young && !mainStem) {
       const newStem = { id: `stem-${Date.now()}`, type: 'stem' as const, x: PLANT_BASE_X, y: PLANT_BASE_Y, width: 4, height: 20, withered: false };
       newStructure.push(newStem);
     }
 
-    if (mainStem && newGrowth >= GROWTH_THRESHOLDS.YOUNG) {
+    if (mainStem && newGrowth >= GROWTH_THRESHOLDS.Young) {
       const baseHeight = 20;
       const maxHeight = 60;
-      const growthProgress = Math.min(1, (newGrowth - GROWTH_THRESHOLDS.YOUNG) / (GROWTH_THRESHOLDS.STEM_FULL_HEIGHT - GROWTH_THRESHOLDS.YOUNG));
+      const growthProgress = Math.min(1, (newGrowth - GROWTH_THRESHOLDS.Young) / (STRUCTURE_GROWTH_POINTS.STEM_FULL_HEIGHT - GROWTH_THRESHOLDS.Young));
       const targetHeight = baseHeight + (growthProgress * (maxHeight - baseHeight));
-      mainStem.height = Math.max(mainStem.height, targetHeight);
+      const stemIndex = newStructure.findIndex(s => s.id === mainStem.id);
+      if (stemIndex !== -1) {
+        const currentStem = newStructure[stemIndex];
+        if (currentStem.type === 'stem') {
+          newStructure[stemIndex] = { ...currentStem, height: Math.max(currentStem.height, targetHeight) };
+        }
+      }
     }
 
-    if (mainStem && newGrowth >= GROWTH_THRESHOLDS.MATURE) {
-      mainStem.width = 6;
+    if (mainStem && newGrowth >= GROWTH_THRESHOLDS.Mature) {
+      const stemIndex = newStructure.findIndex(s => s.id === mainStem.id);
+      if (stemIndex !== -1) {
+        const currentStem = newStructure[stemIndex];
+        if (currentStem.type === 'stem') {
+          newStructure[stemIndex] = { ...currentStem, width: 6 };
+        }
+      }
     }
 
-    const leafThresholds = [GROWTH_THRESHOLDS.LEAF_1, GROWTH_THRESHOLDS.LEAF_2, GROWTH_THRESHOLDS.LEAF_3, GROWTH_THRESHOLDS.LEAF_4];
+    const leafThresholds = [STRUCTURE_GROWTH_POINTS.LEAF_1, STRUCTURE_GROWTH_POINTS.LEAF_2, STRUCTURE_GROWTH_POINTS.LEAF_3, STRUCTURE_GROWTH_POINTS.LEAF_4];
     const existingLeaves = newStructure.filter(s => s.type === 'leaf').length;
     if (mainStem && existingLeaves < leafThresholds.length && newGrowth >= leafThresholds[existingLeaves]) {
         const i = existingLeaves;
@@ -172,7 +201,7 @@ export function updateGame(state: GameState): GameState | null {
         newStructure.push(newLeaf);
     }
 
-    const flowerThresholds = [GROWTH_THRESHOLDS.FLOWER_1, GROWTH_THRESHOLDS.FLOWER_2, GROWTH_THRESHOLDS.FLOWER_3];
+    const flowerThresholds = [STRUCTURE_GROWTH_POINTS.FLOWER_1, STRUCTURE_GROWTH_POINTS.FLOWER_2, STRUCTURE_GROWTH_POINTS.FLOWER_3];
     const existingFlowers = newStructure.filter(s => s.type === 'flower').length;
      if (mainStem && existingFlowers < flowerThresholds.length && newGrowth >= flowerThresholds[existingFlowers]) {
         const i = existingFlowers;
@@ -182,7 +211,7 @@ export function updateGame(state: GameState): GameState | null {
         newStructure.push(newFlower);
     }
 
-    if (newGrowth >= GROWTH_THRESHOLDS.HARVESTABLE) {
+    if (newGrowth >= GROWTH_THRESHOLDS.Harvestable) {
         const leaves = newStructure.filter(s => s.type === 'leaf') as LeafData[];
         const existingBuds = newStructure.filter(s => s.type === 'bud') as BudData[];
         const leavesWithoutBuds = leaves.filter(leaf => !existingBuds.some(bud => bud.leafId === leaf.id));
@@ -200,35 +229,59 @@ export function updateGame(state: GameState): GameState | null {
         }
     }
   }
+  return { newGrowth, newStructure };
+}
 
+function updateState(
+  state: GameState, 
+  currentGrowth: number, 
+  currentStructure: PlantSegment[]
+) {
+  let newGrowth = currentGrowth;
+  
   // --- Growth Regression on structural loss ---
-  const healthyLeaves = newStructure.filter(s => s.type === 'leaf' && !s.withered).length;
-  const healthyFlowers = newStructure.filter(s => s.type === 'flower' && !s.withered).length;
-  if (newGrowth >= GROWTH_THRESHOLDS.LEAF_4 && healthyLeaves < 4) newGrowth = GROWTH_THRESHOLDS.LEAF_3;
-  if (newGrowth >= GROWTH_THRESHOLDS.LEAF_3 && healthyLeaves < 3) newGrowth = GROWTH_THRESHOLDS.LEAF_2;
-  if (newGrowth >= GROWTH_THRESHOLDS.LEAF_2 && healthyLeaves < 2) newGrowth = GROWTH_THRESHOLDS.LEAF_1;
-  if (newGrowth >= GROWTH_THRESHOLDS.LEAF_1 && healthyLeaves < 1) newGrowth = GROWTH_THRESHOLDS.YOUNG;
-  if (newGrowth >= GROWTH_THRESHOLDS.FLOWER_3 && healthyFlowers < 3) newGrowth = GROWTH_THRESHOLDS.FLOWER_2;
-  if (newGrowth >= GROWTH_THRESHOLDS.FLOWER_2 && healthyFlowers < 2) newGrowth = GROWTH_THRESHOLDS.FLOWER_1;
-  if (newGrowth >= GROWTH_THRESHOLDS.FLOWER_1 && healthyFlowers < 1) newGrowth = GROWTH_THRESHOLDS.FLOWERING;
+  const healthyLeaves = currentStructure.filter(s => s.type === 'leaf' && !s.withered).length;
+  const healthyFlowers = currentStructure.filter(s => s.type === 'flower' && !s.withered).length;
+  if (newGrowth >= STRUCTURE_GROWTH_POINTS.LEAF_4 && healthyLeaves < 4) newGrowth = STRUCTURE_GROWTH_POINTS.LEAF_3;
+  if (newGrowth >= STRUCTURE_GROWTH_POINTS.LEAF_3 && healthyLeaves < 3) newGrowth = STRUCTURE_GROWTH_POINTS.LEAF_2;
+  if (newGrowth >= STRUCTURE_GROWTH_POINTS.LEAF_2 && healthyLeaves < 2) newGrowth = STRUCTURE_GROWTH_POINTS.LEAF_1;
+  if (newGrowth >= STRUCTURE_GROWTH_POINTS.LEAF_1 && healthyLeaves < 1) newGrowth = GROWTH_THRESHOLDS.Young;
+  if (newGrowth >= STRUCTURE_GROWTH_POINTS.FLOWER_3 && healthyFlowers < 3) newGrowth = STRUCTURE_GROWTH_POINTS.FLOWER_2;
+  if (newGrowth >= STRUCTURE_GROWTH_POINTS.FLOWER_2 && healthyFlowers < 2) newGrowth = STRUCTURE_GROWTH_POINTS.FLOWER_1;
+  if (newGrowth >= STRUCTURE_GROWTH_POINTS.FLOWER_1 && healthyFlowers < 1) newGrowth = GROWTH_THRESHOLDS.Flowering;
 
   // --- Stage Updates Based on Growth ---
-  if (newGrowth >= GROWTH_THRESHOLDS.HARVESTABLE) newStage = 'Harvestable';
-  else if (newGrowth >= GROWTH_THRESHOLDS.FLOWERING) newStage = 'Flowering';
-  else if (newGrowth >= GROWTH_THRESHOLDS.MATURE) newStage = 'Mature';
-  else if (newGrowth >= GROWTH_THRESHOLDS.YOUNG) newStage = 'Young';
-  else if (newGrowth >= GROWTH_THRESHOLDS.SPROUT) newStage = 'Sprout';
-  else if (state.plant.stage !== 'Soil') newStage = 'Seed';
-  else newStage = 'Soil';
+  const newStage = (Object.keys(GROWTH_THRESHOLDS) as PlantStage[])
+    .reverse()
+    .find(stage => newGrowth >= GROWTH_THRESHOLDS[stage]) ?? 'Seed';
 
   // --- Cap Final Growth ---
-  const allLeaves = newStructure.filter(p => p.type === 'leaf');
-  const allBuds = newStructure.filter(p => p.type === 'bud');
+  const allLeaves = currentStructure.filter(p => p.type === 'leaf');
+  const allBuds = currentStructure.filter(p => p.type === 'bud');
   if (allLeaves.length === 4 && allBuds.length >= 4) {
       if (allLeaves.every(leaf => allBuds.some(bud => bud.leafId === leaf.id))) {
-          newGrowth = Math.min(newGrowth, GROWTH_THRESHOLDS.HARVESTABLE);
+          newGrowth = Math.min(newGrowth, GROWTH_THRESHOLDS.Harvestable);
       }
   }
+
+  return { newGrowth, newStage };
+}
+
+export function updateGame(state: GameState, sunIntensity: number): GameState | null {
+  const now = new Date();
+  const elapsedHours = (now.getTime() - state.lastUpdate.getTime()) / (1000 * 60 * 60);
+
+  const { newHydration, newTimeAtZeroHydration, newStructure: witheredStructure } = updateDehydrationAndWithering(state, elapsedHours);
+
+  const { newGrowth: growthAfterUpdate, newStructure } = updateGrowthAndStructure(state, elapsedHours, newHydration, witheredStructure, sunIntensity);
+
+  const allPartsWithered = newStructure.length > 0 && newStructure.every(p => p.withered);
+  if (allPartsWithered) {
+    console.log("All plant parts withered. Resetting game.");
+    return null;
+  }
+
+  const { newGrowth, newStage } = updateState(state, growthAfterUpdate, newStructure);
 
   return {
     ...state,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { GameState, LeafData, BudData } from './game/state';
+import type { GameState, LeafData, BudData, PlantSegment } from './game/state';
 import { initialGameState } from './game/state';
 import { loadGame, saveGame, updateGame, GROWTH_HYDRATION_THRESHOLD } from './game/engine';
 import { IS_DEBUG_MODE } from './game/debug';
@@ -7,10 +7,88 @@ import { GAME_WIDTH, GAME_HEIGHT, SOIL_LEVEL } from './game/constants';
 
 function App() {
   const [gameState, setGameState] = useState<GameState>(loadGame());
+  const [hasPlantedSeed, setHasPlantedSeed] = useState(() => {
+    // A plant with any structure means a seed has been planted.
+    // A growth value > 0 also works.
+    return loadGame().plant.structure.length > 0;
+  });
+  const [showSettings, setShowSettings] = useState(false);
+  const [locationInput, setLocationInput] = useState("");
+
+  // Function to determine if it's day or night
+  const isDayTime = () => {
+    const hours = new Date().getHours();
+    return hours > 6 && hours < 20; // 6 AM to 8 PM
+  };
+
+  const fetchWeatherData = async (location: string | null) => {
+    try {
+      let lat, lon, city;
+
+      if (location) {
+        const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`);
+        const geoData = await geoResponse.json();
+        if (!geoData.results) {
+          console.error("Could not find location:", location);
+          alert(`Could not find location: ${location}`);
+          return;
+        }
+        lat = geoData.results[0].latitude;
+        lon = geoData.results[0].longitude;
+        city = geoData.results[0].name;
+      } else {
+        const ipResponse = await fetch('https://ip-api.com/json/?fields=status,message,lat,lon,city');
+        const ipData = await ipResponse.json();
+        if (ipData.status !== 'success') {
+          console.error("Failed to get location from IP:", ipData.message);
+          return; // Silently fail for IP lookup
+        }
+        lat = ipData.lat;
+        lon = ipData.lon;
+        city = ipData.city;
+      }
+
+      const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,rain&daily=sunrise,sunset&timezone=auto`);
+      const weatherData = await weatherResponse.json();
+      
+      const weather = {
+        temperature: weatherData.current.temperature_2m,
+        isRaining: weatherData.current.rain > 0,
+      };
+
+      const sunrise = weatherData.daily.sunrise[0];
+      const sunset = weatherData.daily.sunset[0];
+
+      setGameState(prevState => {
+        const newState = {
+          ...prevState,
+          environment: { 
+            ...prevState.environment, 
+            weather, 
+            userLocation: city,
+            sunrise,
+            sunset,
+          }
+        };
+        saveGame(newState);
+        return newState;
+      });
+    } catch (error) {
+      console.error("Failed to fetch weather data", error);
+    }
+  };
+
+  const handleLocationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (locationInput.trim()) {
+      fetchWeatherData(locationInput.trim());
+      setShowSettings(false);
+    }
+  };
 
   const handleWaterPlant = () => {
     // Prevent watering if there's no seed planted
-    if (gameState.plant.stage === 'Soil') return;
+    if (!hasPlantedSeed) return;
 
     setGameState(prevState => {
       const newState = {
@@ -26,13 +104,57 @@ function App() {
     });
   };
 
+  const handleToggleDayNight = () => {
+    setGameState(prevState => {
+      const newState = {
+        ...prevState,
+        environment: {
+          ...prevState.environment,
+          isDay: !prevState.environment.isDay,
+        },
+      };
+      saveGame(newState);
+      return newState;
+    });
+  };
+
   useEffect(() => {
+    // Set initial day/night state and fetch weather
+    setGameState(prevState => ({
+      ...prevState,
+      environment: {
+        ...prevState.environment,
+        isDay: isDayTime(),
+      },
+    }));
+    // Fetch weather using saved location if it exists, otherwise use IP
+    fetchWeatherData(gameState.environment.userLocation);
+
     const timer = setInterval(() => {
+      // --- Sun Intensity Calculation ---
+      const { sunrise, sunset } = gameState.environment;
+      let sunIntensity = 0;
+      let isDay = false;
+      if (sunrise && sunset) {
+        const now = new Date();
+        const sunriseDate = new Date(sunrise);
+        const sunsetDate = new Date(sunset);
+
+        if (now > sunriseDate && now < sunsetDate) {
+          isDay = true;
+          const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
+          const timeSinceSunrise = now.getTime() - sunriseDate.getTime();
+          const dayPercentage = timeSinceSunrise / totalDaylight;
+          // Use a sine wave for smooth transition of intensity
+          sunIntensity = Math.sin(dayPercentage * Math.PI);
+        }
+      }
+
       setGameState(prevState => {
         // Only update if the game has started (seed is planted)
-        if (prevState.plant.stage === 'Soil') return prevState;
+        if (!hasPlantedSeed) return prevState;
         
-        const newState = updateGame(prevState);
+        const newState = updateGame({ ...prevState, environment: { ...prevState.environment, isDay }}, sunIntensity);
         
         if (newState === null) { // Game over signal
           const freshState = {
@@ -49,27 +171,50 @@ function App() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [hasPlantedSeed]);
 
   return (
     <div className="App">
-      {IS_DEBUG_MODE && <div style={{ position: 'fixed', top: 0, left: 0, background: 'red', color: 'white', padding: '2px 5px', fontSize: '10px', zIndex: 100 }}>DEBUG</div>}
+      {IS_DEBUG_MODE && (
+        <div style={{ position: 'fixed', top: 0, left: 0, background: 'rgba(255,0,0,0.5)', color: 'white', padding: '2px 5px', fontSize: '10px', zIndex: 100 }}>
+          DEBUG
+          <button onClick={handleToggleDayNight} style={{ marginLeft: '10px' }}>
+            Toggle Day/Night
+          </button>
+        </div>
+      )}
+      <div style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 100 }}>
+        <button onClick={() => setShowSettings(!showSettings)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>⚙️</button>
+        {showSettings && (
+          <form onSubmit={handleLocationSubmit} style={{ position: 'absolute', right: '30px', top: 0, background: 'white', padding: '10px', border: '1px solid black', borderRadius: '5px' }}>
+            <input 
+              type="text" 
+              value={locationInput}
+              onChange={(e) => setLocationInput(e.target.value)}
+              placeholder="Enter City"
+            />
+            <button type="submit">Set</button>
+          </form>
+        )}
+      </div>
       <header className="App-header">
         <h1>Nur Natur</h1>
-        <button onClick={handleWaterPlant} disabled={gameState.plant.stage === 'Soil'}>
+        <button onClick={handleWaterPlant} disabled={!hasPlantedSeed}>
           Water Plant
         </button>
       </header>
       <main>
-        <Game gameState={gameState} setGameState={setGameState} />
+        <Game gameState={gameState} setGameState={setGameState} hasPlantedSeed={hasPlantedSeed} setHasPlantedSeed={setHasPlantedSeed} />
       </main>
-      </div>
+    </div>
   );
 }
 
 interface GameProps {
   gameState: GameState;
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
+  hasPlantedSeed: boolean;
+  setHasPlantedSeed: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 // --- Hit Detection ---
@@ -102,7 +247,7 @@ function isClickInsideBud(x: number, y: number, bud: BudData): boolean {
   return (dx * dx + dy * dy) <= (bud.size * bud.size);
 }
 
-function Game({ gameState, setGameState }: GameProps) {
+function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -142,17 +287,14 @@ function Game({ gameState, setGameState }: GameProps) {
         return; // Don't process other clicks like planting
     }
 
-    if (gameState.plant.stage === 'Soil') {
-      // (logic for planting the seed)
-      setGameState(prevState => {
-        const newState = {
-          ...prevState,
-          plant: { ...prevState.plant, stage: 'Seed' as const },
-        };
-        saveGame(newState);
-        return newState;
-      });
-    } else if (gameState.plant.stage === 'Harvestable') {
+    if (!hasPlantedSeed) {
+      setHasPlantedSeed(true);
+      // We don't need to change the game state here,
+      // as the timer will now start running updates.
+      return;
+    }
+
+    if (gameState.plant.stage === 'Harvestable') {
       // Check for bud harvesting
       const buds = gameState.plant.structure.filter(s => s.type === 'bud' && !s.withered) as BudData[];
       
@@ -182,17 +324,77 @@ function Game({ gameState, setGameState }: GameProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // --- Sun/Sky Calculation ---
+    const { sunrise, sunset, isDay, weather } = gameState.environment;
+    let dayPercentage = 0;
+    if (sunrise && sunset) {
+      const now = new Date();
+      const sunriseDate = new Date(sunrise);
+      const sunsetDate = new Date(sunset);
+      if (now > sunriseDate && now < sunsetDate) {
+        const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
+        const timeSinceSunrise = now.getTime() - sunriseDate.getTime();
+        dayPercentage = timeSinceSunrise / totalDaylight;
+      }
+    }
+
     // --- Drawing ---
-    const isWithering = gameState.plant.stage === 'Withering';
+    const isRaining = weather?.isRaining ?? false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Draw Soil (placeholder)
+    // 1. Draw Sky & Weather
+    // Calculate sun position
+    const sunX = (canvas.width + 200) * (1 - dayPercentage) - 100; // Move from right to left
+    const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (canvas.height - 100);
+
+    // Dynamic sky color based on sun position
+    let skyColor = isDay ? '#87CEEB' : '#000033'; // Default day/night
+    if (isDay) {
+      const noonColor = [135, 206, 235]; // #87CEEB
+      const horizonColor = [255, 165, 0]; // orange
+      const intensity = Math.sin(dayPercentage * Math.PI);
+      const r = noonColor[0] + (horizonColor[0] - noonColor[0]) * (1 - intensity);
+      const g = noonColor[1] + (horizonColor[1] - noonColor[1]) * (1 - intensity);
+      const b = noonColor[2] + (horizonColor[2] - noonColor[2]) * (1 - intensity);
+      skyColor = `rgb(${r}, ${g}, ${b})`;
+    }
+    if (isRaining) {
+      skyColor = isDay ? '#a0b0b8' : '#2c3e50';
+    }
+
+    ctx.fillStyle = skyColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Sun or Moon
+    if (isDay) {
+      ctx.fillStyle = 'yellow';
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.arc(canvas.width - 50, 50, 30, 0, Math.PI * 2); // Fixed moon position
+      ctx.fill();
+    }
+
+    // Draw Rain
+    if (isRaining) {
+      ctx.fillStyle = 'rgba(174,194,224,0.5)';
+      for (let i = 0; i < 100; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        ctx.fillRect(x, y, 1, 10);
+      }
+    }
+
+    // 2. Draw Soil
     const soilColor = `hsl(30, 30%, ${30 + (1 - gameState.plant.hydration) * 40}%)`;
     ctx.fillStyle = soilColor;
     ctx.fillRect(0, SOIL_LEVEL, canvas.width, GAME_HEIGHT - SOIL_LEVEL);
 
 
-    if (gameState.plant.stage === 'Soil') {
+    if (!hasPlantedSeed) {
       // 2. Draw 'Click to Plant' text
       ctx.fillStyle = '#000000';
       ctx.font = '24px sans-serif';
@@ -251,37 +453,37 @@ function Game({ gameState, setGameState }: GameProps) {
         }
       });
     }
-    
-    // 4. Draw UI
-    ctx.fillStyle = '#000000';
+
+    // --- UI Text Overlays ---
+    ctx.fillStyle = '#ffffff';
     ctx.font = '16px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`Stage: ${gameState.plant.stage}`, 10, 30);
-    ctx.fillText(`Growth: ${(gameState.plant.growth).toFixed(1)}`, 10, 50);
-    ctx.fillText(`Hydration: ${(gameState.plant.hydration * 100).toFixed(0)}%`, 10, 70);
-    ctx.fillText(`Tea Buds Harvested: ${gameState.teaLeavesHarvested}`, 10, 90);
-
-    if (gameState.plant.stage !== 'Soil') {
-      const isAnyPartWithered = gameState.plant.structure.some(p => p.withered);
-      if (isAnyPartWithered) {
-        ctx.fillStyle = '#ff6b6b';
-        ctx.fillText('Prune withered parts!', 10, 110);
-      } else if (gameState.plant.hydration <= GROWTH_HYDRATION_THRESHOLD) {
-        ctx.fillStyle = '#ff6b6b';
-        ctx.fillText('Needs water!', 10, 110);
-      }
+    ctx.fillText(`Tea Leaves Harvested: ${gameState.teaLeavesHarvested}`, 10, 20);
+    ctx.fillText(`Hydration: ${(gameState.plant.hydration * 100).toFixed(0)}%`, 10, 40);
+    ctx.fillText(`Stage: ${gameState.plant.stage}`, 10, 60);
+    ctx.fillText(`Growth: ${gameState.plant.growth.toFixed(2)}`, 10, 80);
+    if (gameState.environment.weather) {
+      ctx.fillText(`Temp: ${gameState.environment.weather.temperature}°C`, 10, 100);
+      ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, 120);
     }
-  }, [gameState]);
 
+    // Display a warning if the plant needs water
+    if (hasPlantedSeed && gameState.plant.hydration < GROWTH_HYDRATION_THRESHOLD) {
+        ctx.fillStyle = 'red';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Needs Water!', canvas.width / 2, 30);
+    }
+
+  }, [gameState, hasPlantedSeed]);
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      id="game-canvas" 
-      width={GAME_WIDTH} 
+    <canvas
+      ref={canvasRef}
+      width={GAME_WIDTH}
       height={GAME_HEIGHT}
       onClick={handleCanvasClick}
-      style={{ cursor: gameState.plant.stage === 'Soil' ? 'pointer' : 'default' }}
+      style={{ cursor: !hasPlantedSeed ? 'pointer' : 'default' }}
     ></canvas>
   );
 }

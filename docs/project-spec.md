@@ -40,7 +40,8 @@ Once the plant is mature, users can pluck individual tea leaves, tracked via a s
 Pruning: When parts of the plant have withered due to lack of water, users can click on them to remove them. This is a necessary step for the plant's recovery.
 
 4. Environmental Factors & Events
-Real-Time Seasons & Weather: The environment will reflect real-world seasons and integrate with local weather data (with user permission).
+Real-Time Day/Night: The game will track real-world time to create a day/night cycle, affecting plant growth and event occurrences.
+Weather Integration: The game will integrate with a public weather API to fetch local weather (based on IP or user input). Rain will fully hydrate the plant, and temperature will affect the dehydration rate.
 Random Events: The game will feature positive events (ladybugs, sunbeams) and dangerous events requiring user action (aphids, goats).
 
 5. Technical Implementation Plan
@@ -49,10 +50,3 @@ Rendering: The procedural plant will be rendered on an HTML5 Canvas.
 State Management: The game's state will be stored in the browser's localStorage.
 Deployment: The application will be configured for easy, continuous deployment via Vercel. We will use the Vercel CLI.
 Debug Mode: A debug mode, activated by a URL parameter (?debug=true), will be available. This mode will accelerate time-based events (like dehydration) to facilitate testing.
-
-6. Login
-- creates a simple 3 word mnemonic for new users and asks them to copy paste it for sync across sessions and in case of browser history dumping (no email or pw required otherwise) 
-
-- stores the mnemonic behind a settings icon (gear) for the user to copy it later
-
-- stores the logged in session in the browser (to not force the user to use the mnemonic each time
