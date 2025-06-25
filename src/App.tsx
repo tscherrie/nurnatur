@@ -3,7 +3,7 @@ import type { GameState, LeafData, BudData } from './game/state';
 import { initialGameState } from './game/state';
 import { loadGame, saveGame, updateGame, GROWTH_HYDRATION_THRESHOLD } from './game/engine';
 import { IS_DEBUG_MODE } from './game/debug';
-import { GAME_WIDTH, GAME_HEIGHT, SOIL_LEVEL } from './game/constants';
+import { GAME_WIDTH, GAME_HEIGHT, SOIL_LEVEL, PLANT_BASE_X, PLANT_BASE_Y } from './game/constants';
 
 const musicTracks = {
   day: Array.from({ length: 4 }, (_, i) => `/assets/audio/day_${i + 1}.mp3`),
@@ -440,14 +440,29 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
 
     if (!hasPlantedSeed) {
       setHasPlantedSeed(true);
-      // Give the plant a tiny bit of growth so the reset logic doesn't fire
-      setGameState(prevState => ({
-        ...prevState,
-        plant: {
-          ...prevState.plant,
-          growth: 0.01,
-        }
-      }));
+      // Immediately create the first sprout to avoid the reset logic misfiring.
+      setGameState(prevState => {
+        const newSprout = { 
+            id: `stem-${Date.now()}`, 
+            type: 'stem' as const, 
+            x: PLANT_BASE_X, 
+            y: PLANT_BASE_Y, 
+            width: 2, 
+            height: 10, 
+            withered: false 
+        };
+        const newState = {
+          ...prevState,
+          plant: {
+            ...prevState.plant,
+            growth: 1,
+            stage: 'Sprout' as const,
+            structure: [newSprout],
+          }
+        };
+        saveGame(newState); // Save the initial plant structure immediately
+        return newState;
+      });
       // Start music on first interaction
       document.querySelector('audio')?.play().catch(_e => console.log("Audio play failed until next interaction"));
       return;
