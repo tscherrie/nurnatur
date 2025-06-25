@@ -557,6 +557,31 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
       ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
     }
 
+    // Draw Sun or Moon
+    if (isDay) {
+      const sunX = (canvas.width + 200) * dayPercentage - 100;
+      const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (SOIL_LEVEL - 50);
+      ctx.fillStyle = 'yellow';
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.arc(canvas.width - 50, 50, 30, 0, Math.PI * 2); // Fixed moon position
+      ctx.fill();
+    }
+
+    // Draw Rain
+    if (isRaining) {
+      ctx.fillStyle = 'rgba(174,194,224,0.5)';
+      for (let i = 0; i < 100; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        ctx.fillRect(x, y, 1, 10);
+      }
+    }
+
     // 2. Draw Soil
     if (!hasPlantedSeed) {
       if (planterImage?.complete && planterImage.naturalWidth > 0) {
@@ -586,6 +611,42 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
           const yPosition = SOIL_LEVEL - baseSoilHeight;
           ctx.drawImage(soilImage, xOffset, yPosition, drawnWidth, soilHeight);
       }
+
+      // --- Plant rendering ---
+      gameState.plant.structure.forEach(segment => {
+        const isWithered = segment.withered;
+        if (segment.type === 'stem') {
+          ctx.fillStyle = isWithered ? '#8d6e63' : '#66bb6a'; // brown when withered
+          ctx.fillRect(segment.x - (segment.width / 2), segment.y - segment.height, segment.width, segment.height);
+        } else if (segment.type === 'leaf') {
+            ctx.save();
+            ctx.translate(segment.x, segment.y);
+            ctx.rotate(segment.angle);
+            
+            ctx.fillStyle = isWithered ? '#a1887f' : '#4caf50'; // brown when withered
+            ctx.beginPath();
+            const leafOffset = segment.angle > 0 ? segment.size : -segment.size;
+            ctx.ellipse(leafOffset, 0, segment.size, segment.size / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        } else if (segment.type === 'flower') {
+          ctx.fillStyle = isWithered ? '#795548' : '#e91e63';
+          ctx.beginPath();
+          ctx.arc(segment.x, segment.y, segment.size, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = isWithered ? '#8d6e63' : '#c8b900';
+          ctx.beginPath();
+          ctx.arc(segment.x, segment.y, segment.size * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (segment.type === 'bud') {
+          ctx.fillStyle = isWithered ? '#6d4c41' : '#fdd835';
+          ctx.beginPath();
+          ctx.arc(segment.x, segment.y, segment.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
     }
 
     // --- UI Text Overlays ---
