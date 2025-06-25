@@ -37,14 +37,14 @@ function App() {
         lon = geoData.results[0].longitude;
         city = geoData.results[0].name;
       } else {
-        const ipResponse = await fetch('https://ip-api.com/json/?fields=status,message,lat,lon,city');
-        const ipData = await ipResponse.json();
-        if (ipData.status !== 'success') {
-          console.error("Failed to get location from IP:", ipData.message);
+        const ipResponse = await fetch('https://freegeoip.app/json/');
+        if (!ipResponse.ok) {
+          console.error("Failed to get location from IP:", ipResponse.statusText);
           return; // Silently fail for IP lookup
         }
-        lat = ipData.lat;
-        lon = ipData.lon;
+        const ipData = await ipResponse.json();
+        lat = ipData.latitude;
+        lon = ipData.longitude;
         city = ipData.city;
       }
 
