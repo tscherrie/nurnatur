@@ -227,19 +227,16 @@ function App() {
       // --- Sun Intensity Calculation ---
       const { sunrise, sunset } = gameState.environment;
       let sunIntensity = 0;
-      let isDay = false;
       const now = debugTimeOverride || new Date();
 
+      // We still calculate the sun's position for visuals, but we will respect the toggled day/night state for game logic.
       if (sunrise && sunset) {
         const sunriseDate = new Date(sunrise);
         const sunsetDate = new Date(sunset);
-
         if (now > sunriseDate && now < sunsetDate) {
-          isDay = true;
           const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
           const timeSinceSunrise = now.getTime() - sunriseDate.getTime();
           const dayPercentage = timeSinceSunrise / totalDaylight;
-          // Use a sine wave for smooth transition of intensity
           sunIntensity = Math.sin(dayPercentage * Math.PI);
         }
       }
@@ -248,7 +245,8 @@ function App() {
         // Only update if the game has started (seed is planted)
         if (!hasPlantedSeed) return prevState;
         
-        const newState = updateGame({ ...prevState, environment: { ...prevState.environment, isDay }}, sunIntensity);
+        // Pass the existing isDay state to the update function, respecting the toggle.
+        const newState = updateGame(prevState, sunIntensity);
         
         if (newState === null) { // Game over signal
           const freshState = {
