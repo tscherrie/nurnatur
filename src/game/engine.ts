@@ -89,9 +89,6 @@ const DEBUG_DEHYDRATION_RATE_PER_HOUR = REAL_DEHYDRATION_RATE_PER_HOUR * 3600;
 
 const DEHYDRATION_RATE_PER_HOUR = IS_DEBUG_MODE ? DEBUG_DEHYDRATION_RATE_PER_HOUR : REAL_DEHYDRATION_RATE_PER_HOUR;
 
-const REAL_DEATH_TIMER_HOURS = 24;
-const DEBUG_DEATH_TIMER_HOURS = 30 / 3600; // 30 seconds
-
 const DAY_GROWTH_MULTIPLIER = 1.5; // Plants grow up to 50% faster during the day
 const DEHYDRATION_TEMP_BASE = 20; // Celsius
 const DEHYDRATION_TEMP_FACTOR = 0.05; // 5% change in dehydration per degree above/below base
