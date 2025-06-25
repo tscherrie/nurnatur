@@ -557,19 +557,21 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
       ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
     }
 
-    // Draw Sun or Moon
-    if (isDay) {
-      const sunX = (canvas.width + 200) * dayPercentage - 100;
-      const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (SOIL_LEVEL - 50);
-      ctx.fillStyle = 'yellow';
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      ctx.arc(canvas.width - 50, 50, 30, 0, Math.PI * 2); // Fixed moon position
-      ctx.fill();
+    // Draw Sun or Moon, but only if it's not raining
+    if (!isRaining) {
+      if (isDay) {
+        const sunX = (canvas.width + 200) * dayPercentage - 100;
+        const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (SOIL_LEVEL - 50);
+        ctx.fillStyle = 'yellow';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(canvas.width - 50, 50, 30, 0, Math.PI * 2); // Fixed moon position
+        ctx.fill();
+      }
     }
 
     // Draw Rain
