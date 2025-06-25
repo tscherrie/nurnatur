@@ -14,6 +14,7 @@ function App() {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [locationInput, setLocationInput] = useState("");
+  const [debugTimeOverride, setDebugTimeOverride] = useState<Date | null>(null);
 
   // Function to determine if it's day or night
   const isDayTime = () => {
@@ -119,6 +120,28 @@ function App() {
     });
   };
 
+  const handleDebugTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10); // value is in minutes
+    const newTime = new Date();
+    newTime.setHours(0, 0, 0, 0); // Start of day
+    newTime.setMinutes(value);
+    setDebugTimeOverride(newTime);
+  };
+
+  const handleToggleRain = () => {
+    setGameState(prevState => {
+      const isCurrentlyRaining = prevState.environment.weather?.isRaining ?? false;
+      const newWeatherState = prevState.environment.weather 
+        ? { ...prevState.environment.weather, isRaining: !isCurrentlyRaining }
+        : { temperature: 15, isRaining: true }; // Default weather if none exists
+
+      return {
+        ...prevState,
+        environment: { ...prevState.environment, weather: newWeatherState }
+      }
+    });
+  }
+
   useEffect(() => {
     // Set initial day/night state and fetch weather
     setGameState(prevState => ({
@@ -136,8 +159,9 @@ function App() {
       const { sunrise, sunset } = gameState.environment;
       let sunIntensity = 0;
       let isDay = false;
+      const now = debugTimeOverride || new Date();
+
       if (sunrise && sunset) {
-        const now = new Date();
         const sunriseDate = new Date(sunrise);
         const sunsetDate = new Date(sunset);
 
@@ -182,6 +206,20 @@ function App() {
           <button onClick={handleToggleDayNight} style={{ marginLeft: '10px' }}>
             Toggle Day/Night
           </button>
+          <button onClick={handleToggleRain} style={{ marginLeft: '10px' }}>
+            Toggle Rain
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginLeft: '10px' }}>
+            <label htmlFor="time-slider">Time:</label>
+            <input 
+              id="time-slider"
+              type="range" 
+              min="0" 
+              max={24 * 60 -1} 
+              defaultValue={new Date().getHours() * 60 + new Date().getMinutes()}
+              onChange={handleDebugTimeChange}
+            />
+          </div>
         </div>
       )}
       <div style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 100 }}>
@@ -205,7 +243,13 @@ function App() {
         </button>
       </header>
       <main>
-        <Game gameState={gameState} setGameState={setGameState} hasPlantedSeed={hasPlantedSeed} setHasPlantedSeed={setHasPlantedSeed} />
+        <Game 
+          gameState={gameState} 
+          setGameState={setGameState} 
+          hasPlantedSeed={hasPlantedSeed} 
+          setHasPlantedSeed={setHasPlantedSeed} 
+          debugTimeOverride={debugTimeOverride}
+        />
       </main>
     </div>
   );
@@ -216,6 +260,7 @@ interface GameProps {
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
   hasPlantedSeed: boolean;
   setHasPlantedSeed: React.Dispatch<React.SetStateAction<boolean>>;
+  debugTimeOverride: Date | null;
 }
 
 // --- Hit Detection ---
@@ -248,7 +293,7 @@ function isClickInsideBud(x: number, y: number, bud: BudData): boolean {
   return (dx * dx + dy * dy) <= (bud.size * bud.size);
 }
 
-function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed }: GameProps) {
+function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debugTimeOverride }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -327,9 +372,9 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed }: Ga
 
     // --- Sun/Sky Calculation ---
     const { sunrise, sunset, isDay, weather } = gameState.environment;
+    const now = debugTimeOverride || new Date();
     let dayPercentage = 0;
     if (sunrise && sunset) {
-      const now = new Date();
       const sunriseDate = new Date(sunrise);
       const sunsetDate = new Date(sunset);
       if (now > sunriseDate && now < sunsetDate) {
@@ -346,7 +391,7 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed }: Ga
     // 1. Draw Sky & Weather
     // Calculate sun position
     const sunX = (canvas.width + 200) * (1 - dayPercentage) - 100; // Move from right to left
-    const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (canvas.height - 100);
+    const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (SOIL_LEVEL - 50);
 
     // Dynamic sky color based on sun position
     let skyColor = isDay ? '#87CEEB' : '#000033'; // Default day/night
