@@ -11,13 +11,39 @@ const musicTracks = {
   night: Array.from({ length: 4 }, (_, i) => `/assets/audio/night_${i + 1}.mp3`),
 };
 
+function getSoilImageForHydration(hydration: number): string {
+  const level = hydration * 100;
+  if (level > 90) return '/assets/images/soil/drowning_soil.png';
+  if (level > 80) return '/assets/images/soil/waterlogged_soil.png';
+  if (level > 70) return '/assets/images/soil/very_wet_soil.png';
+  if (level > 60) return '/assets/images/soil/wet_soil.png';
+  if (level > 50) return '/assets/images/soil/very_humid_soil.png';
+  if (level > 40) return '/assets/images/soil/humid_soil.png';
+  if (level > 30) return '/assets/images/soil/mildy_dry_soil.png';
+  if (level > 20) return '/assets/images/soil/dry_soil.png';
+  if (level > 10) return '/assets/images/soil/arid_soil.png';
+  return '/assets/images/soil/very_arid_soil.png';
+}
+
+const soilImagePaths = [
+  '/assets/images/soil/drowning_soil.png',
+  '/assets/images/soil/waterlogged_soil.png',
+  '/assets/images/soil/very_wet_soil.png',
+  '/assets/images/soil/wet_soil.png',
+  '/assets/images/soil/very_humid_soil.png',
+  '/assets/images/soil/humid_soil.png',
+  '/assets/images/soil/mildy_dry_soil.png',
+  '/assets/images/soil/dry_soil.png',
+  '/assets/images/soil/arid_soil.png',
+  '/assets/images/soil/very_arid_soil.png',
+];
+
 function App() {
   const [gameState, setGameState] = useState<GameState>(loadGame());
-  const [hasPlantedSeed, setHasPlantedSeed] = useState(() => {
-    // A plant with any structure means a seed has been planted.
-    // A growth value > 0 also works.
-    return loadGame().plant.structure.length > 0;
-  });
+  
+  // Derived state: The game has started if the plant has any growth.
+  const hasPlantedSeed = gameState.plant.growth > 0;
+
   const [showSettings, setShowSettings] = useState(false);
   const [locationInput, setLocationInput] = useState("");
   const [debugTimeOverride, setDebugTimeOverride] = useState<Date | null>(null);
@@ -106,7 +132,7 @@ function App() {
         ...prevState,
         plant: {
           ...prevState.plant,
-          hydration: Math.min(1, prevState.plant.hydration + 0.4),
+          hydration: Math.min(1, prevState.plant.hydration + 0.1),
           lastWatered: new Date(),
         },
       };
@@ -164,43 +190,44 @@ function App() {
         isDay: isDayTime(),
       },
     }));
-    // Fetch weather using saved location if it exists, otherwise use IP
     fetchWeatherData(gameState.environment.userLocation);
 
     const timer = setInterval(() => {
-      // --- Sun Intensity Calculation ---
-      const { sunrise, sunset } = gameState.environment;
-      let sunIntensity = 0;
-      let isDay = false;
-      const now = debugTimeOverride || new Date();
-
-      if (sunrise && sunset) {
-        const sunriseDate = new Date(sunrise);
-        const sunsetDate = new Date(sunset);
-
-        if (now > sunriseDate && now < sunsetDate) {
-          isDay = true;
-          const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
-          const timeSinceSunrise = now.getTime() - sunriseDate.getTime();
-          const dayPercentage = timeSinceSunrise / totalDaylight;
-          // Use a sine wave for smooth transition of intensity
-          sunIntensity = Math.sin(dayPercentage * Math.PI);
-        }
-      }
-
       setGameState(prevState => {
-        // Only update if the game has started (seed is planted)
-        if (!hasPlantedSeed) return prevState;
+        // Decide if we should run updates within the updater function itself.
+        const shouldUpdate = prevState.plant.growth > 0;
+        if (!shouldUpdate) {
+            return prevState;
+        }
+
+        // --- Sun Intensity Calculation ---
+        const { sunrise, sunset } = prevState.environment;
+        let sunIntensity = 0;
+        let isDay = false;
+        const now = debugTimeOverride || new Date();
+
+        if (sunrise && sunset) {
+            const sunriseDate = new Date(sunrise);
+            const sunsetDate = new Date(sunset);
+
+            if (now > sunriseDate && now < sunsetDate) {
+            isDay = true;
+            const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
+            const timeSinceSunrise = now.getTime() - sunriseDate.getTime();
+            const dayPercentage = timeSinceSunrise / totalDaylight;
+            sunIntensity = Math.sin(dayPercentage * Math.PI);
+            }
+        }
         
         const newState = updateGame({ ...prevState, environment: { ...prevState.environment, isDay }}, sunIntensity);
         
         if (newState === null) { // Game over signal
-          const freshState = {
+            const freshState = {
             ...initialGameState,
             lastUpdate: new Date(), // Create a fresh timestamp
-          };
-          saveGame(freshState);
-          return freshState;
+            };
+            saveGame(freshState);
+            return freshState;
         }
 
         saveGame(newState);
@@ -209,7 +236,7 @@ function App() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [hasPlantedSeed]);
+  }, [debugTimeOverride]); // We only need to re-run this effect if debugTimeOverride changes.
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -296,12 +323,11 @@ function App() {
           gameState={gameState} 
           setGameState={setGameState} 
           hasPlantedSeed={hasPlantedSeed} 
-          setHasPlantedSeed={setHasPlantedSeed} 
           debugTimeOverride={debugTimeOverride}
         />
       </main>
       <audio ref={audioRef} loop />
-    </div>
+      </div>
   );
 }
 
@@ -309,7 +335,6 @@ interface GameProps {
   gameState: GameState;
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
   hasPlantedSeed: boolean;
-  setHasPlantedSeed: React.Dispatch<React.SetStateAction<boolean>>;
   debugTimeOverride: Date | null;
 }
 
@@ -343,8 +368,25 @@ function isClickInsideBud(x: number, y: number, bud: BudData): boolean {
   return (dx * dx + dy * dy) <= (bud.size * bud.size);
 }
 
-function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debugTimeOverride }: GameProps) {
+function Game({ gameState, setGameState, hasPlantedSeed, debugTimeOverride }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [soilImages, setSoilImages] = useState<{[key: string]: HTMLImageElement}>({});
+  const [acreSoilImage, setAcreSoilImage] = useState<HTMLImageElement | null>(null);
+
+  // Preload images
+  useEffect(() => {
+    const images: {[key: string]: HTMLImageElement} = {};
+    soilImagePaths.forEach(path => {
+        const img = new Image();
+        img.src = path;
+        images[path] = img;
+    });
+    setSoilImages(images);
+
+    const acreImg = new Image();
+    acreImg.src = '/assets/images/acre_soil.png';
+    setAcreSoilImage(acreImg);
+  }, []);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -352,6 +394,17 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+
+    // If the game hasn't started, the first click should start it.
+    if (!hasPlantedSeed) {
+        setGameState(prevState => {
+            const newState = { ...prevState, plant: { ...prevState.plant, growth: 0.001 } };
+            saveGame(newState);
+            return newState;
+        });
+        document.querySelector('audio')?.play().catch(_e => console.log("Audio play failed until next interaction"));
+        return;
+    }
 
     // Check if a withered part was clicked
     const witheredPart = gameState.plant.structure.find(p => {
@@ -381,15 +434,6 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
             return newState;
         });
         return; // Don't process other clicks like planting
-    }
-
-    if (!hasPlantedSeed) {
-      setHasPlantedSeed(true);
-      // We don't need to change the game state here,
-      // as the timer will now start running updates.
-      // Start music on first interaction
-      document.querySelector('audio')?.play().catch(_e => console.log("Audio play failed until next interaction"));
-      return;
     }
 
     if (gameState.plant.stage === 'Harvestable') {
@@ -422,158 +466,161 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // --- Sun/Sky Calculation ---
-    const { sunrise, sunset, isDay, weather } = gameState.environment;
-    const now = debugTimeOverride || new Date();
-    let dayPercentage = 0;
-    if (sunrise && sunset) {
-      const sunriseDate = new Date(sunrise);
-      const sunsetDate = new Date(sunset);
-      if (now > sunriseDate && now < sunsetDate) {
-        const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
-        const timeSinceSunrise = now.getTime() - sunriseDate.getTime();
-        dayPercentage = timeSinceSunrise / totalDaylight;
-      }
-    }
-
-    // --- Drawing ---
-    const isRaining = weather?.isRaining ?? false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Draw Sky & Weather
-    // Calculate sun position
-    const sunX = (canvas.width + 200) * dayPercentage - 100; // Move from left to right
-    const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (SOIL_LEVEL - 50);
-
-    // Dynamic sky color based on sun position
-    let skyColor = isDay ? '#87CEEB' : '#000033'; // Default day/night
-    if (isDay) {
-      const noonColor = [135, 206, 235]; // #87CEEB
-      const horizonColor = [255, 165, 0]; // orange
-      const intensity = Math.sin(dayPercentage * Math.PI);
-      const r = noonColor[0] + (horizonColor[0] - noonColor[0]) * (1 - intensity);
-      const g = noonColor[1] + (horizonColor[1] - noonColor[1]) * (1 - intensity);
-      const b = noonColor[2] + (horizonColor[2] - noonColor[2]) * (1 - intensity);
-      skyColor = `rgb(${r}, ${g}, ${b})`;
-    }
-    if (isRaining) {
-      skyColor = isDay ? '#a0b0b8' : '#2c3e50';
-    }
-
-    ctx.fillStyle = skyColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw Sun or Moon
-    if (isDay) {
-      ctx.fillStyle = 'yellow';
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      ctx.arc(canvas.width - 50, 50, 30, 0, Math.PI * 2); // Fixed moon position
-      ctx.fill();
-    }
-
-    // Draw Rain
-    if (isRaining) {
-      ctx.fillStyle = 'rgba(174,194,224,0.5)';
-      for (let i = 0; i < 100; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        ctx.fillRect(x, y, 1, 10);
-      }
-    }
-
-    // 2. Draw Soil
-    const soilColor = `hsl(30, 30%, ${30 + (1 - gameState.plant.hydration) * 40}%)`;
-    ctx.fillStyle = soilColor;
-    ctx.fillRect(0, SOIL_LEVEL, canvas.width, GAME_HEIGHT - SOIL_LEVEL);
-
-
     if (!hasPlantedSeed) {
-      // 2. Draw 'Click to Plant' text
-      ctx.fillStyle = '#000000';
-      ctx.font = '24px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Click to plant a seed', canvas.width / 2, canvas.height / 2);
+        if (acreSoilImage?.complete && acreSoilImage.naturalWidth > 0) {
+            ctx.drawImage(acreSoilImage, 0, 0, canvas.width, canvas.height);
+        }
+        // Draw 'Click to Plant' text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '30px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'black';
+        ctx.shadowBlur = 5;
+        ctx.fillText('Click to plant a seed', canvas.width / 2, canvas.height / 2);
+        ctx.shadowBlur = 0; // Reset shadow
     } else {
-      // --- Plant rendering ---
-      // Draw Seed (placeholder)
-      ctx.fillStyle = '#6d4c41';
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, SOIL_LEVEL - 10, 8, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Draw Sprout (placeholder) only during the Sprout stage
-      if (gameState.plant.stage === 'Sprout') {
-        ctx.fillStyle = '#66bb6a';
-        ctx.fillRect(canvas.width / 2 - 2, SOIL_LEVEL - 30, 4, 20);
-      }
+        // --- Game is active, draw the full scene ---
 
-      // Draw the procedural plant from its structure
-      gameState.plant.structure.forEach(segment => {
-        const isWithered = segment.withered;
-        if (segment.type === 'stem') {
-          ctx.fillStyle = isWithered ? '#8d6e63' : '#66bb6a'; // brown when withered
-          // Draw the stem growing upwards from its base y-coordinate
-          ctx.fillRect(segment.x - (segment.width / 2), segment.y - segment.height, segment.width, segment.height);
-        } else if (segment.type === 'leaf') {
-            ctx.save();
-            ctx.translate(segment.x, segment.y);
-            ctx.rotate(segment.angle);
-            
-            ctx.fillStyle = isWithered ? '#a1887f' : '#4caf50'; // brown when withered
-            ctx.beginPath();
-            // The leaf is drawn offset from its attachment point for a more natural look
-            const leafOffset = segment.angle > 0 ? segment.size : -segment.size;
-            ctx.ellipse(leafOffset, 0, segment.size, segment.size / 2, 0, 0, Math.PI * 2);
-            ctx.fill();
+        // --- Sun/Sky Calculation ---
+        const { sunrise, sunset, isDay, weather } = gameState.environment;
+        const now = debugTimeOverride || new Date();
+        let dayPercentage = 0;
+        if (sunrise && sunset) {
+          const sunriseDate = new Date(sunrise);
+          const sunsetDate = new Date(sunset);
+          if (now > sunriseDate && now < sunsetDate) {
+            const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
+            const timeSinceSunrise = now.getTime() - sunriseDate.getTime();
+            dayPercentage = timeSinceSunrise / totalDaylight;
+          }
+        }
 
-            ctx.restore();
-        } else if (segment.type === 'flower') {
-          ctx.fillStyle = isWithered ? '#795548' : '#e91e63';
+        // --- Drawing ---
+        const isRaining = weather?.isRaining ?? false;
+
+        // 1. Draw Sky & Weather
+        const sunX = (canvas.width + 200) * dayPercentage - 100; // Move from left to right
+        const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (SOIL_LEVEL - 50);
+
+        let skyColor = isDay ? '#87CEEB' : '#000033';
+        if (isDay) {
+          const noonColor = [135, 206, 235];
+          const horizonColor = [255, 165, 0];
+          const intensity = Math.sin(dayPercentage * Math.PI);
+          const r = noonColor[0] + (horizonColor[0] - noonColor[0]) * (1 - intensity);
+          const g = noonColor[1] + (horizonColor[1] - noonColor[1]) * (1 - intensity);
+          const b = noonColor[2] + (horizonColor[2] - noonColor[2]) * (1 - intensity);
+          skyColor = `rgb(${r}, ${g}, ${b})`;
+        }
+        if (isRaining) {
+          skyColor = isDay ? '#a0b0b8' : '#2c3e50';
+        }
+        ctx.fillStyle = skyColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (isDay) {
+          ctx.fillStyle = 'yellow';
           ctx.beginPath();
-          ctx.arc(segment.x, segment.y, segment.size, 0, Math.PI * 2);
+          ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
           ctx.fill();
-
-          // Add a small center to the flower
-          ctx.fillStyle = isWithered ? '#8d6e63' : '#c8b900';
+        } else {
+          ctx.fillStyle = 'white';
           ctx.beginPath();
-          ctx.arc(segment.x, segment.y, segment.size * 0.4, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (segment.type === 'bud') {
-          ctx.fillStyle = isWithered ? '#6d4c41' : '#fdd835'; // Golden yellow for healthy buds
-          ctx.beginPath();
-          ctx.arc(segment.x, segment.y, segment.size, 0, Math.PI * 2);
+          ctx.arc(canvas.width - 50, 50, 30, 0, Math.PI * 2);
           ctx.fill();
         }
-      });
-    }
 
-    // --- UI Text Overlays ---
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '16px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Tea Leaves Harvested: ${gameState.teaLeavesHarvested}`, 10, 20);
-    ctx.fillText(`Hydration: ${(gameState.plant.hydration * 100).toFixed(0)}%`, 10, 40);
-    ctx.fillText(`Stage: ${gameState.plant.stage}`, 10, 60);
-    ctx.fillText(`Growth: ${gameState.plant.growth.toFixed(2)}`, 10, 80);
-    if (gameState.environment.weather) {
-      ctx.fillText(`Temp: ${gameState.environment.weather.temperature}°C`, 10, 100);
-      ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, 120);
-    }
+        if (isRaining) {
+          ctx.fillStyle = 'rgba(174,194,224,0.5)';
+          for (let i = 0; i < 100; i++) {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            ctx.fillRect(x, y, 1, 10);
+          }
+        }
 
-    // Display a warning if the plant needs water
-    if (hasPlantedSeed && gameState.plant.hydration < GROWTH_HYDRATION_THRESHOLD) {
-        ctx.fillStyle = 'red';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Needs Water!', canvas.width / 2, 30);
-    }
+        // 2. Draw Soil
+        const soilImageSrc = getSoilImageForHydration(gameState.plant.hydration);
+        const soilImage = soilImages[soilImageSrc];
+        if (soilImage?.complete && soilImage.naturalWidth > 0) {
+            const baseSoilHeight = GAME_HEIGHT - SOIL_LEVEL;
+            const soilHeight = baseSoilHeight * 2;
+            const aspectRatio = soilImage.naturalWidth / soilImage.naturalHeight;
+            const drawnWidth = soilHeight * aspectRatio;
+            const xOffset = (canvas.width - drawnWidth) / 2;
+            const yPosition = SOIL_LEVEL - baseSoilHeight; 
+            ctx.drawImage(soilImage, xOffset, yPosition, drawnWidth, soilHeight);
+        }
 
-  }, [gameState, hasPlantedSeed]);
+        // --- Plant rendering ---
+        ctx.fillStyle = '#6d4c41';
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, SOIL_LEVEL - 10, 8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        if (gameState.plant.stage === 'Sprout') {
+          ctx.fillStyle = '#66bb6a';
+          ctx.fillRect(canvas.width / 2 - 2, SOIL_LEVEL - 30, 4, 20);
+        }
+
+        gameState.plant.structure.forEach(segment => {
+          const isWithered = segment.withered;
+          if (segment.type === 'stem') {
+            ctx.fillStyle = isWithered ? '#8d6e63' : '#66bb6a';
+            ctx.fillRect(segment.x - (segment.width / 2), segment.y - segment.height, segment.width, segment.height);
+          } else if (segment.type === 'leaf') {
+              ctx.save();
+              ctx.translate(segment.x, segment.y);
+              ctx.rotate(segment.angle);
+              
+              ctx.fillStyle = isWithered ? '#a1887f' : '#4caf50';
+              ctx.beginPath();
+              const leafOffset = segment.angle > 0 ? segment.size : -segment.size;
+              ctx.ellipse(leafOffset, 0, segment.size, segment.size / 2, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.restore();
+          } else if (segment.type === 'flower') {
+            ctx.fillStyle = isWithered ? '#795548' : '#e91e63';
+            ctx.beginPath();
+            ctx.arc(segment.x, segment.y, segment.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = isWithered ? '#8d6e63' : '#c8b900';
+            ctx.beginPath();
+            ctx.arc(segment.x, segment.y, segment.size * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (segment.type === 'bud') {
+            ctx.fillStyle = isWithered ? '#6d4c41' : '#fdd835';
+            ctx.beginPath();
+            ctx.arc(segment.x, segment.y, segment.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+        
+        // --- UI Text Overlays ---
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Tea Leaves Harvested: ${gameState.teaLeavesHarvested}`, 10, 20);
+        ctx.fillText(`Hydration: ${(gameState.plant.hydration * 100).toFixed(0)}%`, 10, 40);
+        ctx.fillText(`Stage: ${gameState.plant.stage}`, 10, 60);
+        ctx.fillText(`Growth: ${gameState.plant.growth.toFixed(2)}`, 10, 80);
+        if (gameState.environment.weather) {
+          ctx.fillText(`Temp: ${gameState.environment.weather.temperature}°C`, 10, 100);
+          ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, 120);
+        }
+
+        if (gameState.plant.hydration < GROWTH_HYDRATION_THRESHOLD) {
+            ctx.fillStyle = 'red';
+            ctx.font = 'bold 20px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Needs Water!', canvas.width / 2, 30);
+        }
+    }
+  }, [gameState, hasPlantedSeed, soilImages, acreSoilImage, debugTimeOverride]);
 
   return (
     <canvas
