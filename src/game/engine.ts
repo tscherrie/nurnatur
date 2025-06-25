@@ -98,6 +98,31 @@ const REAL_WITHER_RATE_PER_PART_HOURS = 4;
 const DEBUG_WITHER_RATE_PER_PART_HOURS = 5 / 3600; // 5 seconds per part in debug
 const WITHER_RATE_PER_PART_HOURS = IS_DEBUG_MODE ? DEBUG_WITHER_RATE_PER_PART_HOURS : REAL_WITHER_RATE_PER_PART_HOURS;
 
+function getTemperatureGrowthFactor(temp: number): number {
+  if (temp < 15) return 0.20;
+  if (temp > 33) return 0.20;
+  const factors: { [key: number]: number } = {
+    15: 0.20, 16: 0.29, 17: 0.36, 18: 0.43, 19: 0.50, 20: 0.57,
+    21: 0.64, 22: 0.71, 23: 0.79, 24: 0.86, 25: 0.93, 26: 1.00,
+    27: 0.89, 28: 0.78, 29: 0.67, 30: 0.56, 31: 0.44, 32: 0.33,
+    33: 0.20,
+  };
+  return factors[Math.round(temp)] ?? 0.2; // Default to 0.2 if temp is somehow out of range
+}
+
+function getHydrationGrowthFactor(hydration: number): number {
+  const level = hydration * 100;
+  if (level > 80) return 0.50;
+  if (level > 70) return 0.60;
+  if (level > 60) return 0.70;
+  if (level > 50) return 0.80;
+  if (level > 40) return 1.00;
+  if (level > 30) return 0.95;
+  if (level > 20) return 0.60;
+  if (level > 10) return 0.15;
+  return 0.00;
+}
+
 function updateDehydrationAndWithering(state: GameState, elapsedHours: number) {
   const { weather } = state.environment;
 
@@ -148,11 +173,17 @@ function updateGrowthAndStructure(state: GameState, elapsedHours: number, curren
   let newStructure = [...currentStructure];
 
   const isAnyPartWithered = newStructure.some(p => p.withered);
+  const hydrationFactor = getHydrationGrowthFactor(currentHydration);
 
-  if (!isAnyPartWithered && currentHydration > GROWTH_HYDRATION_THRESHOLD) {
+  if (!isAnyPartWithered && hydrationFactor > 0) {
     // The growth multiplier is now a mix of the base rate and the boost from sun intensity
-    const growthMultiplier = 1 + (DAY_GROWTH_MULTIPLIER - 1) * sunIntensity;
-    const growthRate = GROWTH_RATE_PER_HOUR * growthMultiplier;
+    const sunGrowthFactor = 1 + (DAY_GROWTH_MULTIPLIER - 1) * sunIntensity;
+    
+    // Get the temperature factor
+    const temp = state.environment.weather?.temperature ?? 20; // Default to 20C if no weather data
+    const tempGrowthFactor = getTemperatureGrowthFactor(temp);
+
+    const growthRate = GROWTH_RATE_PER_HOUR * sunGrowthFactor * tempGrowthFactor * hydrationFactor;
     newGrowth += (growthRate * elapsedHours);
 
     const mainStem = newStructure.find(s => s.type === 'stem');
