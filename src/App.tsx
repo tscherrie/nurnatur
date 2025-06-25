@@ -23,6 +23,7 @@ function App() {
   const [debugTimeOverride, setDebugTimeOverride] = useState<Date | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTrack, setCurrentTrack] = useState<string>('');
+  const [isMuted, setIsMuted] = useState(false);
 
   // Function to determine if it's day or night
   const isDayTime = () => {
@@ -150,6 +151,10 @@ function App() {
     });
   }
 
+  const handleToggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
   useEffect(() => {
     // Set initial day/night state and fetch weather
     setGameState(prevState => ({
@@ -207,6 +212,13 @@ function App() {
   }, [hasPlantedSeed]);
 
   useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  useEffect(() => {
     // --- Audio Control ---
     const audio = audioRef.current;
     if (!audio || !hasPlantedSeed) return;
@@ -256,10 +268,13 @@ function App() {
           </div>
         </div>
       )}
-      <div style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 100 }}>
+      <div style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 100, display: 'flex', alignItems: 'center' }}>
+        <button onClick={handleToggleMute} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', marginRight: '5px' }}>
+          {isMuted ? '🔇' : '🔊'}
+        </button>
         <button onClick={() => setShowSettings(!showSettings)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>⚙️</button>
         {showSettings && (
-          <form onSubmit={handleLocationSubmit} style={{ position: 'absolute', right: '30px', top: 0, background: 'white', padding: '10px', border: '1px solid black', borderRadius: '5px' }}>
+          <form onSubmit={handleLocationSubmit} style={{ position: 'absolute', right: '0', top: '40px', background: 'white', padding: '10px', border: '1px solid black', borderRadius: '5px' }}>
             <input 
               type="text" 
               value={locationInput}
@@ -286,7 +301,7 @@ function App() {
         />
       </main>
       <audio ref={audioRef} loop />
-      </div>
+    </div>
   );
 }
 
