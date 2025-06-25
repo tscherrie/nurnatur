@@ -51,6 +51,9 @@ const backgroundPaths = {
   night_rain: '/assets/images/backgrounds/night_rain.png',
 };
 
+const sunPath = '/assets/images/objects/sun.png';
+const moonPath = '/assets/images/objects/moon.png';
+
 function getBackgroundImage(isDay: boolean, isRaining: boolean, dayPercentage: number): string {
   if (isRaining) {
     return isDay ? backgroundPaths.day_rain : backgroundPaths.night_rain;
@@ -411,6 +414,8 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
   const [soilImages, setSoilImages] = useState<{[key: string]: HTMLImageElement}>({});
   const [planterImage, setPlanterImage] = useState<HTMLImageElement | null>(null);
   const [backgroundImages, setBackgroundImages] = useState<{[key: string]: HTMLImageElement}>({});
+  const [sunImage, setSunImage] = useState<HTMLImageElement | null>(null);
+  const [moonImage, setMoonImage] = useState<HTMLImageElement | null>(null);
 
   // Preload images
   useEffect(() => {
@@ -433,6 +438,14 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
         bgImages[path] = img;
     });
     setBackgroundImages(bgImages);
+
+    const sunImg = new Image();
+    sunImg.src = sunPath;
+    setSunImage(sunImg);
+
+    const moonImg = new Image();
+    moonImg.src = moonPath;
+    setMoonImage(moonImg);
   }, []);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -559,18 +572,12 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
 
     // Draw Sun or Moon, but only if it's not raining
     if (!isRaining) {
-      if (isDay) {
+      if (isDay && sunImage?.complete) {
         const sunX = (canvas.width + 200) * dayPercentage - 100;
         const sunY = SOIL_LEVEL - Math.sin(dayPercentage * Math.PI) * (SOIL_LEVEL - 50);
-        ctx.fillStyle = 'yellow';
-        ctx.beginPath();
-        ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(canvas.width - 50, 50, 30, 0, Math.PI * 2); // Fixed moon position
-        ctx.fill();
+        ctx.drawImage(sunImage, sunX - sunImage.width / 2, sunY - sunImage.height / 2);
+      } else if (!isDay && moonImage?.complete) {
+        ctx.drawImage(moonImage, canvas.width - 150, 50);
       }
     }
 
