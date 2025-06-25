@@ -286,7 +286,7 @@ function App() {
         />
       </main>
       <audio ref={audioRef} loop />
-    </div>
+      </div>
   );
 }
 
@@ -373,7 +373,7 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
       // We don't need to change the game state here,
       // as the timer will now start running updates.
       // Start music on first interaction
-      document.querySelector('audio')?.play().catch(e => console.log("Audio play failed until next interaction"));
+      document.querySelector('audio')?.play().catch(_e => console.log("Audio play failed until next interaction"));
       return;
     }
 
