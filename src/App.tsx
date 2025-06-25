@@ -606,14 +606,6 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
       ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, 120);
     }
 
-    // Display a warning if the plant needs water
-    if (hasPlantedSeed && gameState.plant.hydration < GROWTH_HYDRATION_THRESHOLD) {
-        ctx.fillStyle = 'red';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Needs Water!', canvas.width / 2, 30);
-    }
-
   }, [gameState, hasPlantedSeed, soilImages, planterImage]);
 
   return (
