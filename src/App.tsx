@@ -53,6 +53,7 @@ const backgroundPaths = {
 
 const sunPath = '/assets/images/objects/sun.png';
 const moonPath = '/assets/images/objects/moon.png';
+const wateringCanPath = '/assets/images/objects/watering_can.png';
 
 function getBackgroundImage(isDay: boolean, isRaining: boolean, dayPercentage: number): string {
   if (isRaining) {
@@ -79,10 +80,24 @@ function App() {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [locationInput, setLocationInput] = useState("");
-  const [debugTimeOverride, setDebugTimeOverride] = useState<Date | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTrack, setCurrentTrack] = useState<string>('');
   const [isMuted, setIsMuted] = useState(false);
+  
+  // State for watering can interaction - lifted up from Game component
+  const [canPos, setCanPos] = useState({ x: 0, y: 0 });
+  const [isDraggingCan, setIsDraggingCan] = useState(false);
+  const [isWatering, setIsWatering] = useState(false);
+  const isWateringRef = useRef(isWatering);
+  isWateringRef.current = isWatering;
+  const [waterDrops, setWaterDrops] = useState<{id: number, x: number, y: number, speed: number}[]>([]);
+  const canPosRef = useRef(canPos);
+  canPosRef.current = canPos;
+  
+  // Need to get resting position into App scope
+  useEffect(() => {
+    setCanPos({ x: GAME_WIDTH - 150, y: SOIL_LEVEL - 80 });
+  }, []);
 
   // Function to determine if it's day or night
   const isDayTime = () => {
@@ -193,7 +208,10 @@ function App() {
     const newTime = new Date();
     newTime.setHours(0, 0, 0, 0); // Start of day
     newTime.setMinutes(value);
-    setDebugTimeOverride(newTime);
+    
+    // This is tricky. We can't put the time in state as it causes too many re-renders.
+    // Instead, we'll just use the slider's value directly when we need it in the loop.
+    // This function now effectively does nothing to React state.
   };
 
   const handleToggleRain = () => {
@@ -214,6 +232,19 @@ function App() {
     setIsMuted(!isMuted);
   };
 
+  const handleReset = () => {
+    // Also reset any debug overrides
+    if (IS_DEBUG_MODE) {
+      const slider = document.getElementById('time-slider') as HTMLInputElement;
+      if (slider) {
+        slider.value = '0';
+      }
+    }
+    const freshState = { ...initialGameState };
+    setGameState(freshState);
+    saveGame(freshState);
+  };
+
   useEffect(() => {
     // Set initial day/night state and fetch weather
     setGameState(prevState => ({
@@ -226,45 +257,99 @@ function App() {
     // Fetch weather using saved location if it exists, otherwise use IP
     fetchWeatherData(gameState.environment.userLocation);
 
+    let lastLogicUpdate = Date.now();
     const timer = setInterval(() => {
-      // --- Sun Intensity Calculation ---
-      const { sunrise, sunset } = gameState.environment;
-      let sunIntensity = 0;
-      const now = debugTimeOverride || new Date();
+      const now = Date.now();
 
-      // We still calculate the sun's position for visuals, but we will respect the toggled day/night state for game logic.
-      if (sunrise && sunset) {
-        const sunriseDate = new Date(sunrise);
-        const sunsetDate = new Date(sunset);
-        if (now > sunriseDate && now < sunsetDate) {
-          const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
-          const timeSinceSunrise = now.getTime() - sunriseDate.getTime();
-          const dayPercentage = timeSinceSunrise / totalDaylight;
-          sunIntensity = Math.sin(dayPercentage * Math.PI);
-        }
+      // --- Game Logic Update (runs once per second) ---
+      if (now - lastLogicUpdate >= 1000) {
+        lastLogicUpdate = now;
+
+        setGameState(prevState => {
+          // Only update if the game has started (seed is planted)
+          if (!hasPlantedSeed) return prevState;
+          
+          // --- Sun Intensity Calculation ---
+          const { sunrise, sunset } = prevState.environment;
+          let sunIntensity = 0;
+          const currentTime = new Date(); // Use real time for this calculation
+          if (sunrise && sunset) {
+            const sunriseDate = new Date(sunrise);
+            const sunsetDate = new Date(sunset);
+            if (currentTime > sunriseDate && currentTime < sunsetDate) {
+              const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
+              const timeSinceSunrise = currentTime.getTime() - sunriseDate.getTime();
+              const dayPercentage = timeSinceSunrise / totalDaylight;
+              sunIntensity = Math.sin(dayPercentage * Math.PI);
+            }
+          }
+
+          let stateWithWatering = prevState;
+          const hydrationRate = IS_DEBUG_MODE ? 0.1 : 0.01;
+          // Continuous watering - must be immutable
+          if (isWateringRef.current) {
+            stateWithWatering = {
+              ...prevState,
+              plant: {
+                ...prevState.plant,
+                hydration: Math.min(1, prevState.plant.hydration + hydrationRate),
+              }
+            };
+          }
+
+          // Pass the (potentially updated) state to the main game update function.
+          const newState = updateGame(stateWithWatering, sunIntensity);
+          
+          if (newState === null) { // Game over signal
+            const freshState = {
+              ...initialGameState,
+              environment: prevState.environment, // Keep weather and location
+              lastUpdate: new Date(),
+            };
+            saveGame(freshState);
+            return freshState;
+          }
+
+          saveGame(newState);
+          return newState;
+        });
       }
 
-      setGameState(prevState => {
-        // Only update if the game has started (seed is planted)
-        if (!hasPlantedSeed) return prevState;
-        
-        // Pass the existing isDay state to the update function, respecting the toggle.
-        const newState = updateGame(prevState, sunIntensity);
-        
-        if (newState === null) { // Game over signal
-          const freshState = {
-            ...initialGameState,
-            environment: prevState.environment, // Keep weather and location
-            lastUpdate: new Date(),
-          };
-          saveGame(freshState);
-          return freshState;
-        }
 
-        saveGame(newState);
-        return newState;
+      // --- Water Drop Animation (runs every frame) ---
+      setWaterDrops(prevDrops => {
+        let newDrops = [...prevDrops];
+        
+        // Add new drops if watering
+        if (isWateringRef.current) {
+          // Calculate spout position based on can position and rotation
+          const spoutOffsetX = -95; // Shifted back to the right
+          const spoutOffsetY = -70; // Move the origin up to match the spout
+          const angle = -Math.PI / 4;  
+          const rotatedSpoutX = spoutOffsetX * Math.cos(angle) - spoutOffsetY * Math.sin(angle);
+          const rotatedSpoutY = spoutOffsetX * Math.sin(angle) + spoutOffsetY * Math.cos(angle);
+          
+          const spoutX = canPosRef.current.x + rotatedSpoutX;
+          const spoutY = canPosRef.current.y + rotatedSpoutY;
+
+          for (let i = 0; i < 2; i++) { // Add 2 drops per frame for a fuller stream
+            newDrops.push({
+              id: Date.now() + Math.random(),
+              x: spoutX + (Math.random() - 0.5) * 30, // Wider horizontal spread
+              y: spoutY,
+              speed: 2 + Math.random() * 2
+            });
+          }
+        }
+        
+        // Move and filter existing drops
+        newDrops = newDrops
+          .map(drop => ({ ...drop, y: drop.y + drop.speed }))
+          .filter(drop => drop.y < SOIL_LEVEL - 20);
+
+        return newDrops;
       });
-    }, 1000);
+    }, 1000 / 60); // Run at 60fps for smooth animation
 
     return () => clearInterval(timer);
   }, [hasPlantedSeed]);
@@ -332,7 +417,7 @@ function App() {
               onChange={handleDebugTimeChange}
             />
           </div>
-        </div>
+      </div>
       )}
       <div style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 100, display: 'flex', alignItems: 'center' }}>
         <button onClick={handleToggleMute} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', marginRight: '5px' }}>
@@ -353,9 +438,6 @@ function App() {
       </div>
       <header className="App-header">
         <h1>Nur Natur</h1>
-        <button onClick={handleWaterPlant} disabled={!hasPlantedSeed}>
-          Water Plant
-        </button>
       </header>
       <main>
         <Game 
@@ -363,7 +445,13 @@ function App() {
           setGameState={setGameState} 
           hasPlantedSeed={hasPlantedSeed} 
           setHasPlantedSeed={setHasPlantedSeed} 
-          debugTimeOverride={debugTimeOverride}
+          canPos={canPos}
+          setCanPos={setCanPos}
+          isDraggingCan={isDraggingCan}
+          setIsDraggingCan={setIsDraggingCan}
+          isWatering={isWatering}
+          setIsWatering={setIsWatering}
+          waterDrops={waterDrops}
         />
       </main>
       <audio ref={audioRef} loop />
@@ -376,7 +464,13 @@ interface GameProps {
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
   hasPlantedSeed: boolean;
   setHasPlantedSeed: React.Dispatch<React.SetStateAction<boolean>>;
-  debugTimeOverride: Date | null;
+  canPos: { x: number; y: number; };
+  setCanPos: (pos: { x: number; y: number; }) => void;
+  isDraggingCan: boolean;
+  setIsDraggingCan: (isDragging: boolean) => void;
+  isWatering: boolean;
+  setIsWatering: (isWatering: boolean) => void;
+  waterDrops: {id: number, x: number, y: number}[];
 }
 
 // --- Hit Detection ---
@@ -409,17 +503,25 @@ function isClickInsideBud(x: number, y: number, bud: BudData): boolean {
   return (dx * dx + dy * dy) <= (bud.size * bud.size);
 }
 
-function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debugTimeOverride }: GameProps) {
+function Game({ 
+  gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, 
+  canPos, setCanPos, isDraggingCan, setIsDraggingCan, isWatering, setIsWatering,
+  waterDrops
+}: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [soilImages, setSoilImages] = useState<{[key: string]: HTMLImageElement}>({});
   const [planterImage, setPlanterImage] = useState<HTMLImageElement | null>(null);
   const [backgroundImages, setBackgroundImages] = useState<{[key: string]: HTMLImageElement}>({});
   const [sunImage, setSunImage] = useState<HTMLImageElement | null>(null);
   const [moonImage, setMoonImage] = useState<HTMLImageElement | null>(null);
+  const [wateringCanImage, setWateringCanImage] = useState<HTMLImageElement | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  
+  const restingCanPos = { x: GAME_WIDTH - 150, y: SOIL_LEVEL - 80 };
 
   // Preload images
   useEffect(() => {
-    const images: {[key: string]: HTMLImageElement} = {};
+    const images: {[key:string]: HTMLImageElement} = {};
     soilImagePaths.forEach(path => {
         const img = new Image();
         img.src = path;
@@ -446,7 +548,90 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
     const moonImg = new Image();
     moonImg.src = moonPath;
     setMoonImage(moonImg);
+
+    const canImg = new Image();
+    canImg.src = wateringCanPath;
+    setWateringCanImage(canImg);
   }, []);
+
+  const getEventCoordinates = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+
+    if ('touches' in event.nativeEvent) {
+      clientX = event.nativeEvent.touches[0].clientX;
+      clientY = event.nativeEvent.touches[0].clientY;
+    } else {
+      clientX = event.nativeEvent.clientX;
+      clientY = event.nativeEvent.clientY;
+    }
+
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  };
+
+  const isOverObject = (pos: {x: number, y: number}, objPos: {x: number, y: number}, img: HTMLImageElement | null) => {
+    if (!img) return false;
+    const width = img.width;
+    const height = img.height;
+    return (
+      pos.x > objPos.x - width / 2 &&
+      pos.x < objPos.x + width / 2 &&
+      pos.y > objPos.y - height / 2 &&
+      pos.y < objPos.y + height / 2
+    );
+  };
+  
+  const isOverPlantArea = (pos: {x: number, y: number}) => {
+    // Expand the watering zone to be wider and taller for a better feel.
+    const plantArea = {
+      x: GAME_WIDTH / 2 - 40, // Shifted more to the right
+      y: SOIL_LEVEL - 700,   // Start higher up
+      width: 300,              // Make it wide
+      height: 600              // Make it tall, ending at the soil level
+    }
+    return (
+      pos.x > plantArea.x &&
+      pos.x < plantArea.x + plantArea.width &&
+      pos.y > plantArea.y &&
+      pos.y < plantArea.y + plantArea.height
+    );
+  }
+
+  const handleInteractionStart = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const coords = getEventCoordinates(event);
+    if (isOverObject(coords, canPos, wateringCanImage)) {
+      setIsDraggingCan(true);
+    }
+  };
+
+  const handleInteractionMove = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const coords = getEventCoordinates(event);
+    setMousePos(coords);
+
+    if (!isDraggingCan) return;
+    setCanPos(coords);
+    
+    if (isOverPlantArea(coords)) {
+      setIsWatering(true);
+    } else {
+      setIsWatering(false);
+    }
+  };
+
+  const handleInteractionEnd = () => {
+    setIsDraggingCan(false);
+    setIsWatering(false);
+    setCanPos(restingCanPos);
+  };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -547,7 +732,19 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
 
     // --- Sun/Sky Calculation ---
     const { sunrise, sunset, isDay, weather } = gameState.environment;
-    const now = debugTimeOverride || new Date();
+    
+    const timeSlider = IS_DEBUG_MODE ? document.getElementById('time-slider') as HTMLInputElement : null;
+    let now: Date;
+
+    if (timeSlider && timeSlider.value) {
+      const value = parseInt(timeSlider.value, 10);
+      now = new Date();
+      now.setHours(0, 0, 0, 0);
+      now.setMinutes(value);
+    } else {
+      now = new Date();
+    }
+
     let dayPercentage = 0;
     if (sunrise && sunset) {
       const sunriseDate = new Date(sunrise);
@@ -621,6 +818,30 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
           ctx.drawImage(soilImage, xOffset, yPosition, drawnWidth, soilHeight);
       }
 
+      // 3. Draw Watering Can
+      if (wateringCanImage?.complete) {
+        ctx.save();
+        
+        if (isWatering) {
+          // Translate to the rotation point (e.g., center of the can) and rotate
+          ctx.translate(canPos.x, canPos.y);
+          ctx.rotate(-Math.PI / 4); // Rotate 45 degrees counter-clockwise
+          ctx.drawImage(wateringCanImage, -wateringCanImage.width / 2, -wateringCanImage.height / 2);
+        } else {
+          ctx.drawImage(wateringCanImage, canPos.x - wateringCanImage.width / 2, canPos.y - wateringCanImage.height / 2);
+        }
+
+        ctx.restore();
+      }
+
+      // 4. Draw Water Drops
+      ctx.fillStyle = 'rgba(100, 150, 255, 0.8)';
+      waterDrops.forEach(drop => {
+        ctx.beginPath();
+        ctx.arc(drop.x, drop.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
       // --- Plant rendering ---
       gameState.plant.structure.forEach(segment => {
         const isWithered = segment.withered;
@@ -673,7 +894,7 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
       ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, IS_DEBUG_MODE ? 120 : 60);
     }
 
-  }, [gameState, hasPlantedSeed, soilImages, planterImage, backgroundImages]);
+  }, [gameState, hasPlantedSeed, soilImages, planterImage, backgroundImages, isDraggingCan, isWatering, canPos, waterDrops]);
 
   return (
     <canvas
@@ -681,7 +902,14 @@ function Game({ gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, debu
       width={GAME_WIDTH}
       height={GAME_HEIGHT}
       onClick={handleCanvasClick}
-      style={{ cursor: !hasPlantedSeed ? 'pointer' : 'default' }}
+      onMouseDown={handleInteractionStart}
+      onMouseMove={handleInteractionMove}
+      onMouseUp={handleInteractionEnd}
+      onMouseLeave={handleInteractionEnd}
+      onTouchStart={handleInteractionStart}
+      onTouchMove={handleInteractionMove}
+      onTouchEnd={handleInteractionEnd}
+      style={{ cursor: isDraggingCan ? 'grabbing' : (isOverObject(mousePos, canPos, wateringCanImage) ? 'grab' : (!hasPlantedSeed ? 'pointer' : 'default')) }}
     ></canvas>
   );
 }
