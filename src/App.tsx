@@ -82,7 +82,6 @@ function App() {
   const [locationInput, setLocationInput] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
   const wateringAudioRef = useRef<HTMLAudioElement>(null);
-  const wateringTimeoutRef = useRef<number | null>(null);
   const [currentTrack, setCurrentTrack] = useState<string>('');
   const [isMuted, setIsMuted] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
