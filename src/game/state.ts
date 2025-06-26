@@ -39,7 +39,13 @@ export type BudData = BaseSegment & {
   leafId: string; // Reference to which leaf this bud is attached to
 };
 
-export type PlantSegment = StemData | LeafData | FlowerData | BudData;
+// A type guard to ensure we handle all segment types in our rendering logic.
+export type PlantSegment = 
+  | { id: string; type: 'stem'; x: number; y: number; width: number; height: number; withered: boolean; }
+  | LeafData
+  | FlowerData
+  | BudData
+  | { id: string; type: 'seed'; x: number; y: number; withered: boolean; size: number };
 
 export interface PlantState {
   stage: PlantStage;

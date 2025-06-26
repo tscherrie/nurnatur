@@ -95,12 +95,12 @@ export function simulateOfflineProgress(state: GameState, historicalData: any): 
 
     // 3. Growth Step (for 1 hour)
     const sunIntensity = calculateSunIntensityForHour(currentHour, sunrise, sunset);
-    const { newGrowth, newStructure: structureAfterGrowth } = updateGrowthAndStructure(simulatedState, 1, newHydration, structureAfterDehydration, sunIntensity);
+    const { newGrowth, newStructure } = updateGrowthAndStructure(simulatedState, 1, newHydration, structureAfterDehydration, sunIntensity);
     simulatedState.plant.growth = newGrowth;
-    simulatedState.plant.structure = structureAfterGrowth;
+    simulatedState.plant.structure = newStructure;
     
     // 4. Update the plant's overall stage
-    simulatedState.plant.stage = updateState(newGrowth, structureAfterGrowth).newStage;
+    simulatedState.plant.stage = updateState(newGrowth, newStructure).newStage;
   }
 
   // Set the final lastUpdate time to now.
@@ -288,16 +288,25 @@ function updateGrowthAndStructure(state: GameState, elapsedHours: number, curren
     const growthRate = GROWTH_RATE_PER_HOUR * sunGrowthFactor * tempGrowthFactor * hydrationFactor;
     newGrowth += (growthRate * elapsedHours);
 
+    const hasSeed = newStructure.some(s => s.type === 'seed');
+    
+    // If we have a seed and we've reached the Sprout stage, replace the seed with a stem
+    if (hasSeed && newGrowth >= GROWTH_THRESHOLDS.Sprout) {
+      newStructure = newStructure.filter(s => s.type !== 'seed'); // Remove seed
+      const newStem = { id: `stem-${Date.now()}`, type: 'stem' as const, x: PLANT_BASE_X, y: PLANT_BASE_Y, width: 4, height: 20, withered: false };
+      newStructure.push(newStem); // Add sprout
+    }
+
     const mainStem = newStructure.find(s => s.type === 'stem');
 
     if (newGrowth >= GROWTH_THRESHOLDS.Young && !mainStem) {
-      const newStem = { id: `stem-${Date.now()}`, type: 'stem' as const, x: PLANT_BASE_X, y: PLANT_BASE_Y, width: 4, height: 20, withered: false };
+      const newStem = { id: `stem-${Date.now()}`, type: 'stem' as const, x: PLANT_BASE_X, y: PLANT_BASE_Y, width: 8, height: 40, withered: false };
       newStructure.push(newStem);
     }
 
     if (mainStem && newGrowth >= GROWTH_THRESHOLDS.Young) {
-      const baseHeight = 20;
-      const maxHeight = 60;
+      const baseHeight = 40;
+      const maxHeight = 120;
       const growthProgress = Math.min(1, (newGrowth - GROWTH_THRESHOLDS.Young) / (STRUCTURE_GROWTH_POINTS.STEM_FULL_HEIGHT - GROWTH_THRESHOLDS.Young));
       const targetHeight = baseHeight + (growthProgress * (maxHeight - baseHeight));
       const stemIndex = newStructure.findIndex(s => s.id === mainStem.id);
@@ -314,7 +323,7 @@ function updateGrowthAndStructure(state: GameState, elapsedHours: number, curren
       if (stemIndex !== -1) {
         const currentStem = newStructure[stemIndex];
         if (currentStem.type === 'stem') {
-          newStructure[stemIndex] = { ...currentStem, width: 6 };
+          newStructure[stemIndex] = { ...currentStem, width: 12 };
         }
       }
     }
@@ -326,7 +335,7 @@ function updateGrowthAndStructure(state: GameState, elapsedHours: number, curren
         const side = (i % 2 === 0) ? -1 : 1;
         const yPosition = mainStem.y - (mainStem.height * (0.2 + (Math.floor(i / 2) * 0.25)));
         const angle = side * Math.PI / 4;
-        const newLeaf: LeafData = { id: `leaf-${Date.now()}`, type: 'leaf', x: mainStem.x, y: yPosition, size: 8, angle, withered: false };
+        const newLeaf: LeafData = { id: `leaf-${Date.now()}`, type: 'leaf', x: mainStem.x, y: yPosition, size: 16, angle, withered: false };
         newStructure.push(newLeaf);
     }
 
@@ -334,9 +343,9 @@ function updateGrowthAndStructure(state: GameState, elapsedHours: number, curren
     const existingFlowers = newStructure.filter(s => s.type === 'flower').length;
      if (mainStem && existingFlowers < flowerThresholds.length && newGrowth >= flowerThresholds[existingFlowers]) {
         const i = existingFlowers;
-        const yPos = mainStem.y - mainStem.height + (i * 15);
-        const xPos = mainStem.x + ((i % 2 === 0) ? -10 : 10);
-        const newFlower: FlowerData = { id: `flower-${Date.now()}`, type: 'flower', x: xPos, y: yPos, size: 5, withered: false };
+        const yPos = mainStem.y - mainStem.height + (i * 30);
+        const xPos = mainStem.x + ((i % 2 === 0) ? -20 : 20);
+        const newFlower: FlowerData = { id: `flower-${Date.now()}`, type: 'flower', x: xPos, y: yPos, size: 10, withered: false };
         newStructure.push(newFlower);
     }
 

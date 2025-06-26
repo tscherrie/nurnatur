@@ -58,6 +58,7 @@ const wateringCanPath = '/assets/images/objects/watering_can.webp';
 const leafPath = '/assets/images/plant/leaf.webp';
 const flowerPath = '/assets/images/plant/flower.webp';
 const budPath = '/assets/images/plant/bud.webp';
+const seedPath = '/assets/images/plant/seed.webp';
 
 function getBackgroundImage(isDay: boolean, isRaining: boolean, dayPercentage: number): string {
   if (isRaining) {
@@ -557,6 +558,7 @@ function Game({
   const [leafImage, setLeafImage] = useState<HTMLImageElement | null>(null);
   const [flowerImage, setFlowerImage] = useState<HTMLImageElement | null>(null);
   const [budImage, setBudImage] = useState<HTMLImageElement | null>(null);
+  const [seedImage, setSeedImage] = useState<HTMLImageElement | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
   const restingCanPos = { x: GAME_WIDTH - 150, y: SOIL_LEVEL - 80 };
@@ -606,6 +608,10 @@ function Game({
     const budImg = new Image();
     budImg.src = budPath;
     setBudImage(budImg);
+
+    const seedImg = new Image();
+    seedImg.src = seedPath;
+    setSeedImage(seedImg);
   }, []);
 
   const getEventCoordinates = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -726,24 +732,23 @@ function Game({
 
     if (!hasPlantedSeed) {
       setHasPlantedSeed(true);
-      // Immediately create the first sprout to avoid the reset logic misfiring.
+      // Immediately create the first seed to avoid the reset logic misfiring.
       setGameState(prevState => {
-        const newSprout = { 
-            id: `stem-${Date.now()}`, 
-            type: 'stem' as const, 
+        const newSeed = { 
+            id: `seed-${Date.now()}`, 
+            type: 'seed' as const, 
             x: PLANT_BASE_X, 
             y: PLANT_BASE_Y, 
-            width: 2, 
-            height: 10, 
+            size: 10, // A nominal size for the seed object
             withered: false 
         };
         const newState = {
           ...prevState,
           plant: {
             ...prevState.plant,
-            growth: 1,
-            stage: 'Sprout' as const,
-            structure: [newSprout],
+            growth: 0,
+            stage: 'Seed' as const,
+            structure: [newSeed],
           }
         };
         saveGame(newState); // Save the initial plant structure immediately
@@ -902,13 +907,18 @@ function Game({
         if (segment.type === 'stem') {
           ctx.fillStyle = isWithered ? '#8d6e63' : '#66bb6a'; // brown when withered
           ctx.fillRect(segment.x - (segment.width / 2), segment.y - segment.height, segment.width, segment.height);
+        } else if (segment.type === 'seed' && seedImage?.complete) {
+            const h = 80; // Double the size
+            const aspectRatio = seedImage.naturalWidth / seedImage.naturalHeight;
+            const w = h * aspectRatio;
+            ctx.drawImage(seedImage, segment.x - w / 2, segment.y - h, w, h);
         } else if (segment.type === 'leaf' && leafImage?.complete) {
             ctx.save();
             ctx.translate(segment.x, segment.y);
             ctx.rotate(segment.angle);
             
             const aspectRatio = leafImage.naturalWidth / leafImage.naturalHeight;
-            const h = segment.size * 2.5; // Scale factor for visual size
+            const h = segment.size * 5; // Double the scale factor
             const w = h * aspectRatio;
 
             // Since the image points up, we need to draw it "above" the attachment point.
@@ -919,14 +929,14 @@ function Game({
 
             ctx.restore();
         } else if (segment.type === 'flower' && flowerImage?.complete) {
-            const h = segment.size * 4; // Scale factor
+            const h = segment.size * 8; // Double the scale factor
             const w = h; // Assume square for simplicity
             if (isWithered) ctx.globalAlpha = 0.5;
             ctx.drawImage(flowerImage, segment.x - w / 2, segment.y - h / 2, w, h);
             if (isWithered) ctx.globalAlpha = 1.0;
 
         } else if (segment.type === 'bud' && budImage?.complete) {
-            const h = segment.size * 4; // Scale factor
+            const h = segment.size * 8; // Double the scale factor
             const w = h;
             if (isWithered) ctx.globalAlpha = 0.5;
             ctx.drawImage(budImage, segment.x - w / 2, segment.y - h / 2, w, h);
@@ -950,7 +960,7 @@ function Game({
       ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, IS_DEBUG_MODE ? 120 : 60);
     }
 
-  }, [gameState, hasPlantedSeed, soilImages, planterImage, backgroundImages, isDraggingCan, isWatering, canPos, waterDrops, leafImage, flowerImage, budImage]);
+  }, [gameState, hasPlantedSeed, soilImages, planterImage, backgroundImages, isDraggingCan, isWatering, canPos, waterDrops, leafImage, flowerImage, budImage, seedImage]);
 
   return (
     <canvas
