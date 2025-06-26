@@ -423,4 +423,18 @@ export function updateGame(state: GameState, sunIntensity: number): GameState | 
     },
     lastUpdate: now,
   };
+}
+
+function getSoilImageForHydration(hydration: number): string {
+  const level = hydration * 100;
+  if (level > 90) return '/assets/images/soil/drowning_soil.webp';
+  if (level > 80) return '/assets/images/soil/waterlogged_soil.webp';
+  if (level > 70) return '/assets/images/soil/very_wet_soil.webp';
+  if (level > 60) return '/assets/images/soil/wet_soil.webp';
+  if (level > 50) return '/assets/images/soil/very_humid_soil.webp';
+  if (level > 40) return '/assets/images/soil/humid_soil.webp';
+  if (level > 30) return '/assets/images/soil/mildy_dry_soil.webp';
+  if (level > 20) return '/assets/images/soil/dry_soil.webp';
+  if (level > 10) return '/assets/images/soil/arid_soil.webp';
+  return '/assets/images/soil/very_arid_soil.webp';
 } 

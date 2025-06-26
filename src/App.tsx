@@ -13,47 +13,47 @@ const musicTracks = {
 
 function getSoilImageForHydration(hydration: number): string {
   const level = hydration * 100;
-  if (level > 90) return '/assets/images/soil/drowning_soil.png';
-  if (level > 80) return '/assets/images/soil/waterlogged_soil.png';
-  if (level > 70) return '/assets/images/soil/very_wet_soil.png';
-  if (level > 60) return '/assets/images/soil/wet_soil.png';
-  if (level > 50) return '/assets/images/soil/very_humid_soil.png';
-  if (level > 40) return '/assets/images/soil/humid_soil.png';
-  if (level > 30) return '/assets/images/soil/mildy_dry_soil.png';
-  if (level > 20) return '/assets/images/soil/dry_soil.png';
-  if (level > 10) return '/assets/images/soil/arid_soil.png';
-  return '/assets/images/soil/very_arid_soil.png';
+  if (level > 90) return '/assets/images/soil/drowning_soil.webp';
+  if (level > 80) return '/assets/images/soil/waterlogged_soil.webp';
+  if (level > 70) return '/assets/images/soil/very_wet_soil.webp';
+  if (level > 60) return '/assets/images/soil/wet_soil.webp';
+  if (level > 50) return '/assets/images/soil/very_humid_soil.webp';
+  if (level > 40) return '/assets/images/soil/humid_soil.webp';
+  if (level > 30) return '/assets/images/soil/mildy_dry_soil.webp';
+  if (level > 20) return '/assets/images/soil/dry_soil.webp';
+  if (level > 10) return '/assets/images/soil/arid_soil.webp';
+  return '/assets/images/soil/very_arid_soil.webp';
 }
 
 const soilImagePaths = [
-  '/assets/images/soil/drowning_soil.png',
-  '/assets/images/soil/waterlogged_soil.png',
-  '/assets/images/soil/very_wet_soil.png',
-  '/assets/images/soil/wet_soil.png',
-  '/assets/images/soil/very_humid_soil.png',
-  '/assets/images/soil/humid_soil.png',
-  '/assets/images/soil/mildy_dry_soil.png',
-  '/assets/images/soil/dry_soil.png',
-  '/assets/images/soil/arid_soil.png',
-  '/assets/images/soil/very_arid_soil.png',
+  '/assets/images/soil/drowning_soil.webp',
+  '/assets/images/soil/waterlogged_soil.webp',
+  '/assets/images/soil/very_wet_soil.webp',
+  '/assets/images/soil/wet_soil.webp',
+  '/assets/images/soil/very_humid_soil.webp',
+  '/assets/images/soil/humid_soil.webp',
+  '/assets/images/soil/mildy_dry_soil.webp',
+  '/assets/images/soil/dry_soil.webp',
+  '/assets/images/soil/arid_soil.webp',
+  '/assets/images/soil/very_arid_soil.webp',
 ];
 
-const planterImagePath = '/assets/images/planter/acre_soil.png';
+const planterImagePath = '/assets/images/planter/acre_soil.webp';
 
 const backgroundPaths = {
-  sunrise: '/assets/images/backgrounds/sunrise.png',
-  mid_morning: '/assets/images/backgrounds/mid_morning.png',
-  noon: '/assets/images/backgrounds/noon.png',
-  mid_afternoon: '/assets/images/backgrounds/mid_afternoon.png',
-  sunset: '/assets/images/backgrounds/sunset.png',
-  day_rain: '/assets/images/backgrounds/day_rain.png',
-  night_clear: '/assets/images/backgrounds/night_clear.png',
-  night_rain: '/assets/images/backgrounds/night_rain.png',
+  sunrise: '/assets/images/backgrounds/sunrise.webp',
+  mid_morning: '/assets/images/backgrounds/mid_morning.webp',
+  noon: '/assets/images/backgrounds/noon.webp',
+  mid_afternoon: '/assets/images/backgrounds/mid_afternoon.webp',
+  sunset: '/assets/images/backgrounds/sunset.webp',
+  day_rain: '/assets/images/backgrounds/day_rain.webp',
+  night_clear: '/assets/images/backgrounds/night_clear.webp',
+  night_rain: '/assets/images/backgrounds/night_rain.webp',
 };
 
-const sunPath = '/assets/images/objects/sun.png';
-const moonPath = '/assets/images/objects/moon.png';
-const wateringCanPath = '/assets/images/objects/watering_can.png';
+const sunPath = '/assets/images/objects/sun.webp';
+const moonPath = '/assets/images/objects/moon.webp';
+const wateringCanPath = '/assets/images/objects/watering_can.webp';
 
 function getBackgroundImage(isDay: boolean, isRaining: boolean, dayPercentage: number): string {
   if (isRaining) {
@@ -383,22 +383,11 @@ function App() {
     if (!audio) return;
 
     if (isWatering) {
-      wateringTimeoutRef.current = window.setTimeout(() => {
-        audio.play().catch(e => console.error("Watering sound failed to play", e));
-      }, 200); // 200ms delay
+      audio.play().catch(e => console.error("Watering sound failed to play", e));
     } else {
-      if (wateringTimeoutRef.current) {
-        clearTimeout(wateringTimeoutRef.current);
-      }
       audio.pause();
       audio.currentTime = 0;
     }
-
-    return () => {
-      if (wateringTimeoutRef.current) {
-        clearTimeout(wateringTimeoutRef.current);
-      }
-    };
   }, [isWatering]);
 
   useEffect(() => {
