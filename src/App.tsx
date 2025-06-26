@@ -55,6 +55,10 @@ const sunPath = '/assets/images/objects/sun.webp';
 const moonPath = '/assets/images/objects/moon.webp';
 const wateringCanPath = '/assets/images/objects/watering_can.webp';
 
+const leafPath = '/assets/images/plant/leaf.webp';
+const flowerPath = '/assets/images/plant/flower.webp';
+const budPath = '/assets/images/plant/bud.webp';
+
 function getBackgroundImage(isDay: boolean, isRaining: boolean, dayPercentage: number): string {
   if (isRaining) {
     return isDay ? backgroundPaths.day_rain : backgroundPaths.night_rain;
@@ -82,6 +86,7 @@ function App() {
   const [locationInput, setLocationInput] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
   const wateringAudioRef = useRef<HTMLAudioElement>(null);
+  const wateringTimeoutRef = useRef<number | null>(null);
   const [currentTrack, setCurrentTrack] = useState<string>('');
   const [isMuted, setIsMuted] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -549,6 +554,9 @@ function Game({
   const [sunImage, setSunImage] = useState<HTMLImageElement | null>(null);
   const [moonImage, setMoonImage] = useState<HTMLImageElement | null>(null);
   const [wateringCanImage, setWateringCanImage] = useState<HTMLImageElement | null>(null);
+  const [leafImage, setLeafImage] = useState<HTMLImageElement | null>(null);
+  const [flowerImage, setFlowerImage] = useState<HTMLImageElement | null>(null);
+  const [budImage, setBudImage] = useState<HTMLImageElement | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
   const restingCanPos = { x: GAME_WIDTH - 150, y: SOIL_LEVEL - 80 };
@@ -586,6 +594,18 @@ function Game({
     const canImg = new Image();
     canImg.src = wateringCanPath;
     setWateringCanImage(canImg);
+
+    const leafImg = new Image();
+    leafImg.src = leafPath;
+    setLeafImage(leafImg);
+
+    const flowerImg = new Image();
+    flowerImg.src = flowerPath;
+    setFlowerImage(flowerImg);
+
+    const budImg = new Image();
+    budImg.src = budPath;
+    setBudImage(budImg);
   }, []);
 
   const getEventCoordinates = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -882,33 +902,35 @@ function Game({
         if (segment.type === 'stem') {
           ctx.fillStyle = isWithered ? '#8d6e63' : '#66bb6a'; // brown when withered
           ctx.fillRect(segment.x - (segment.width / 2), segment.y - segment.height, segment.width, segment.height);
-        } else if (segment.type === 'leaf') {
+        } else if (segment.type === 'leaf' && leafImage?.complete) {
             ctx.save();
             ctx.translate(segment.x, segment.y);
             ctx.rotate(segment.angle);
             
-            ctx.fillStyle = isWithered ? '#a1887f' : '#4caf50'; // brown when withered
-            ctx.beginPath();
-            const leafOffset = segment.angle > 0 ? segment.size : -segment.size;
-            ctx.ellipse(leafOffset, 0, segment.size, segment.size / 2, 0, 0, Math.PI * 2);
-            ctx.fill();
+            const aspectRatio = leafImage.naturalWidth / leafImage.naturalHeight;
+            const h = segment.size * 2.5; // Scale factor for visual size
+            const w = h * aspectRatio;
+
+            // Since the image points up, we need to draw it "above" the attachment point.
+            // We'll offset it by half its height so the base connects to the stem.
+            if (isWithered) ctx.globalAlpha = 0.5;
+            ctx.drawImage(leafImage, -w / 2, -h, w, h);
+            if (isWithered) ctx.globalAlpha = 1.0;
 
             ctx.restore();
-        } else if (segment.type === 'flower') {
-          ctx.fillStyle = isWithered ? '#795548' : '#e91e63';
-          ctx.beginPath();
-          ctx.arc(segment.x, segment.y, segment.size, 0, Math.PI * 2);
-          ctx.fill();
+        } else if (segment.type === 'flower' && flowerImage?.complete) {
+            const h = segment.size * 4; // Scale factor
+            const w = h; // Assume square for simplicity
+            if (isWithered) ctx.globalAlpha = 0.5;
+            ctx.drawImage(flowerImage, segment.x - w / 2, segment.y - h / 2, w, h);
+            if (isWithered) ctx.globalAlpha = 1.0;
 
-          ctx.fillStyle = isWithered ? '#8d6e63' : '#c8b900';
-          ctx.beginPath();
-          ctx.arc(segment.x, segment.y, segment.size * 0.4, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (segment.type === 'bud') {
-          ctx.fillStyle = isWithered ? '#6d4c41' : '#fdd835';
-          ctx.beginPath();
-          ctx.arc(segment.x, segment.y, segment.size, 0, Math.PI * 2);
-          ctx.fill();
+        } else if (segment.type === 'bud' && budImage?.complete) {
+            const h = segment.size * 4; // Scale factor
+            const w = h;
+            if (isWithered) ctx.globalAlpha = 0.5;
+            ctx.drawImage(budImage, segment.x - w / 2, segment.y - h / 2, w, h);
+            if (isWithered) ctx.globalAlpha = 1.0;
         }
       });
     }
@@ -928,7 +950,7 @@ function Game({
       ctx.fillText(`Location: ${gameState.environment.userLocation}`, 10, IS_DEBUG_MODE ? 120 : 60);
     }
 
-  }, [gameState, hasPlantedSeed, soilImages, planterImage, backgroundImages, isDraggingCan, isWatering, canPos, waterDrops]);
+  }, [gameState, hasPlantedSeed, soilImages, planterImage, backgroundImages, isDraggingCan, isWatering, canPos, waterDrops, leafImage, flowerImage, budImage]);
 
   return (
     <canvas
