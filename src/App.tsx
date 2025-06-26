@@ -81,6 +81,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [locationInput, setLocationInput] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
+  const wateringAudioRef = useRef<HTMLAudioElement>(null);
   const [currentTrack, setCurrentTrack] = useState<string>('');
   const [isMuted, setIsMuted] = useState(false);
   
@@ -324,11 +325,27 @@ function App() {
   }, [hasPlantedSeed]);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.muted = isMuted;
+    const musicAudio = audioRef.current;
+    const wateringAudio = wateringAudioRef.current;
+    if (musicAudio) {
+      musicAudio.muted = isMuted;
+    }
+    if (wateringAudio) {
+      wateringAudio.muted = isMuted;
     }
   }, [isMuted]);
+
+  useEffect(() => {
+    const audio = wateringAudioRef.current;
+    if (!audio) return;
+
+    if (isWatering) {
+      audio.play().catch(e => console.error("Watering sound failed to play", e));
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  }, [isWatering]);
 
   useEffect(() => {
     // --- Audio Control ---
@@ -424,6 +441,7 @@ function App() {
         />
       </main>
       <audio ref={audioRef} loop />
+      <audio ref={wateringAudioRef} src="/assets/audio/objects/watering_can.mp3" loop />
       </div>
   );
 }
