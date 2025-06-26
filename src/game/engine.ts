@@ -5,6 +5,111 @@ import { PLANT_BASE_X, PLANT_BASE_Y } from './constants';
 
 const STORAGE_KEY = 'nurnatur-game-state';
 
+/**
+ * A utility function to format a Date object into 'YYYY-MM-DD' string format.
+ */
+function toAPIDateFormat(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+export async function fetchHistoricalWeather(lat: number, lon: number, startDate: Date, endDate: Date) {
+  const start_date = toAPIDateFormat(startDate);
+  const end_date = toAPIDateFormat(endDate);
+
+  const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${start_date}&end_date=${end_date}&hourly=temperature_2m,precipitation&daily=sunrise,sunset&timezone=auto`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Historical weather data fetch failed: ${response.statusText}`);
+    }
+    const data = await response.json();
+    console.log("Structured Historical Weather API Response:", data);
+    return data;
+  } catch (error) {
+    console.error("Error fetching historical weather data:", error);
+    return null;
+  }
+}
+
+/**
+ * Calculates the sun's intensity for a given hour based on sunrise and sunset times.
+ * @returns A value between 0 (night) and 1 (peak day).
+ */
+function calculateSunIntensityForHour(hour: Date, sunrise: Date, sunset: Date): number {
+  if (hour > sunrise && hour < sunset) {
+    const totalDaylight = sunset.getTime() - sunrise.getTime();
+    if (totalDaylight <= 0) return 0;
+    const timeSinceSunrise = hour.getTime() - sunrise.getTime();
+    const dayPercentage = timeSinceSunrise / totalDaylight;
+    return Math.sin(dayPercentage * Math.PI);
+  }
+  return 0;
+}
+
+export function simulateOfflineProgress(state: GameState, historicalData: any): GameState {
+  // Create a deep mutable copy of the state to modify during the simulation
+  const simulatedState: GameState = JSON.parse(JSON.stringify(state));
+
+  const hourlyTime = historicalData.hourly.time;
+  const hourlyTemp = historicalData.hourly.temperature_2m;
+  const hourlyPrecip = historicalData.hourly.precipitation;
+  const dailyTime = historicalData.daily.time;
+  const dailySunrise = historicalData.daily.sunrise;
+  const dailySunset = historicalData.daily.sunset;
+
+  // Loop through each hour of absence
+  for (let i = 0; i < hourlyTime.length; i++) {
+    const currentHour = new Date(hourlyTime[i]);
+    const currentTemp = hourlyTemp[i];
+    const currentPrecip = hourlyPrecip[i];
+
+    // Find the corresponding day's data for sunrise and sunset
+    const dayString = hourlyTime[i].split('T')[0];
+    const dayIndex = dailyTime.indexOf(dayString);
+    if (dayIndex === -1) continue; // Skip if we can't find daily data for this hour
+
+    const sunrise = new Date(dailySunrise[dayIndex]);
+    const sunset = new Date(dailySunset[dayIndex]);
+
+    // 1. Handle rain first. If it rained, plant is fully hydrated.
+    if (currentPrecip > 0) {
+      simulatedState.plant.hydration = 1;
+      simulatedState.plant.timeAtZeroHydration = 0; // Reset withering timer
+    }
+
+    // If temp is null, we can't do much. Let's skip this hour's simulation.
+    if (currentTemp === null) continue;
+
+    // Update the weather in the simulated state for this hour
+    simulatedState.environment.weather = {
+      temperature: currentTemp,
+      isRaining: currentPrecip > 0,
+    };
+    
+    // 2. Dehydration Step (for 1 hour)
+    const { newHydration, newTimeAtZeroHydration, newStructure: structureAfterDehydration } = updateDehydrationAndWithering(simulatedState, 1);
+    simulatedState.plant.hydration = newHydration;
+    simulatedState.plant.timeAtZeroHydration = newTimeAtZeroHydration;
+    simulatedState.plant.structure = structureAfterDehydration;
+
+    // 3. Growth Step (for 1 hour)
+    const sunIntensity = calculateSunIntensityForHour(currentHour, sunrise, sunset);
+    const { newGrowth, newStructure: structureAfterGrowth } = updateGrowthAndStructure(simulatedState, 1, newHydration, structureAfterDehydration, sunIntensity);
+    simulatedState.plant.growth = newGrowth;
+    simulatedState.plant.structure = structureAfterGrowth;
+    
+    // 4. Update the plant's overall stage
+    simulatedState.plant.stage = updateState(newGrowth, structureAfterGrowth).newStage;
+  }
+
+  // Set the final lastUpdate time to now.
+  simulatedState.lastUpdate = new Date();
+
+  console.log("Offline simulation complete. New state:", simulatedState);
+  return simulatedState;
+}
+
 export function saveGame(state: GameState): void {
   try {
     const stateString = JSON.stringify(state);
@@ -36,9 +141,6 @@ export function loadGame(): GameState {
     };
     
     // Dates are not automatically converted from JSON, so we need to parse them back
-    if (migratedState.plant.lastWatered) {
-      migratedState.plant.lastWatered = new Date(migratedState.plant.lastWatered);
-    }
     migratedState.lastUpdate = new Date(migratedState.lastUpdate);
     if (migratedState.environment.sunrise) {
       migratedState.environment.sunrise = new Date(migratedState.environment.sunrise).toISOString();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { GameState, LeafData, BudData } from './game/state';
 import { initialGameState } from './game/state';
-import { loadGame, saveGame, updateGame } from './game/engine';
+import { loadGame, saveGame, updateGame, fetchHistoricalWeather, simulateOfflineProgress } from './game/engine';
 import { IS_DEBUG_MODE } from './game/debug';
 import { GAME_WIDTH, GAME_HEIGHT, SOIL_LEVEL, PLANT_BASE_X, PLANT_BASE_Y } from './game/constants';
 
@@ -82,8 +82,10 @@ function App() {
   const [locationInput, setLocationInput] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
   const wateringAudioRef = useRef<HTMLAudioElement>(null);
+  const wateringTimeoutRef = useRef<number | null>(null);
   const [currentTrack, setCurrentTrack] = useState<string>('');
   const [isMuted, setIsMuted] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
   
   // State for watering can interaction - lifted up from Game component
   const [canPos, setCanPos] = useState({ x: 0, y: 0 });
@@ -152,6 +154,8 @@ function App() {
             ...prevState.environment, 
             weather, 
             userLocation: city,
+            latitude: lat,
+            longitude: lon,
             sunrise,
             sunset,
           }
@@ -216,112 +220,151 @@ function App() {
   };
 
   useEffect(() => {
-    // Set initial day/night state and fetch weather
-    setGameState(prevState => ({
-      ...prevState,
-      environment: {
-        ...prevState.environment,
-        isDay: isDayTime(),
-      },
-    }));
-    // Fetch weather using saved location if it exists, otherwise use IP
-    fetchWeatherData(gameState.environment.userLocation);
-
-    let lastLogicUpdate = Date.now();
-    const timer = setInterval(() => {
-      const now = Date.now();
-
-      // --- Game Logic Update (runs once per second) ---
-      if (now - lastLogicUpdate >= 1000) {
-        lastLogicUpdate = now;
-
-        setGameState(prevState => {
-          // Only update if the game has started (seed is planted)
-          if (!hasPlantedSeed) return prevState;
-          
-          // --- Sun Intensity Calculation ---
-          const { sunrise, sunset } = prevState.environment;
-          let sunIntensity = 0;
-          const currentTime = new Date(); // Use real time for this calculation
-          if (sunrise && sunset) {
-            const sunriseDate = new Date(sunrise);
-            const sunsetDate = new Date(sunset);
-            if (currentTime > sunriseDate && currentTime < sunsetDate) {
-              const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
-              const timeSinceSunrise = currentTime.getTime() - sunriseDate.getTime();
-              const dayPercentage = timeSinceSunrise / totalDaylight;
-              sunIntensity = Math.sin(dayPercentage * Math.PI);
-            }
-          }
-
-          let stateWithWatering = prevState;
-          const hydrationRate = IS_DEBUG_MODE ? 0.1 : 0.01;
-          // Continuous watering - must be immutable
-          if (isWateringRef.current) {
-            stateWithWatering = {
-              ...prevState,
-              plant: {
-                ...prevState.plant,
-                hydration: Math.min(1, prevState.plant.hydration + hydrationRate),
-              }
-            };
-          }
-
-          // Pass the (potentially updated) state to the main game update function.
-          const newState = updateGame(stateWithWatering, sunIntensity);
-          
-          if (newState === null) { // Game over signal
-            const freshState = {
-              ...initialGameState,
-              environment: prevState.environment, // Keep weather and location
-              lastUpdate: new Date(),
-            };
-            saveGame(freshState);
-            return freshState;
-          }
-
-          saveGame(newState);
-          return newState;
-        });
+    if (IS_DEBUG_MODE) {
+      const slider = document.getElementById('time-slider') as HTMLInputElement;
+      if (slider) {
+        slider.value = '0';
       }
+    }
+  }, []);
 
+  useEffect(() => {
+    // This is the main setup effect.
+    const now = new Date();
+    const lastUpdate = new Date(gameState.lastUpdate);
+    const elapsedHours = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
+    const offlineThreshold = IS_DEBUG_MODE ? (1 / 60) : 1; // 1 minute in debug, 1 hour otherwise.
 
-      // --- Water Drop Animation (runs every frame) ---
-      setWaterDrops(prevDrops => {
-        let newDrops = [...prevDrops];
+    const performStartup = async () => {
+      if (elapsedHours > offlineThreshold && gameState.environment.latitude && gameState.environment.longitude) {
+        setIsSimulating(true);
+        console.log(`Player has been away for ${elapsedHours.toFixed(2)} hours. Simulating offline progress...`);
         
-        // Add new drops if watering
-        if (isWateringRef.current) {
-          // Calculate spout position based on can position and rotation
-          const spoutOffsetX = -95; // Shifted back to the right
-          const spoutOffsetY = -70; // Move the origin up to match the spout
-          const angle = -Math.PI / 4;  
-          const rotatedSpoutX = spoutOffsetX * Math.cos(angle) - spoutOffsetY * Math.sin(angle);
-          const rotatedSpoutY = spoutOffsetX * Math.sin(angle) + spoutOffsetY * Math.cos(angle);
-          
-          const spoutX = canPosRef.current.x + rotatedSpoutX;
-          const spoutY = canPosRef.current.y + rotatedSpoutY;
-
-          for (let i = 0; i < 2; i++) { // Add 2 drops per frame for a fuller stream
-            newDrops.push({
-              id: Date.now() + Math.random(),
-              x: spoutX + (Math.random() - 0.5) * 30, // Wider horizontal spread
-              y: spoutY,
-              speed: 2 + Math.random() * 2
-            });
-          }
+        const historicalData = await fetchHistoricalWeather(
+          gameState.environment.latitude,
+          gameState.environment.longitude,
+          lastUpdate,
+          now
+        );
+        
+        if (historicalData) {
+          const simulatedState = simulateOfflineProgress(gameState, historicalData);
+          setGameState(simulatedState);
+          saveGame(simulatedState); // Save the new state immediately
         }
         
-        // Move and filter existing drops
-        newDrops = newDrops
-          .map(drop => ({ ...drop, y: drop.y + drop.speed }))
-          .filter(drop => drop.y < SOIL_LEVEL - 20);
+        setIsSimulating(false);
+      }
 
-        return newDrops;
-      });
-    }, 1000 / 60); // Run at 60fps for smooth animation
+      // Set initial day/night state and fetch current weather for the UI
+      setGameState(prevState => ({
+        ...prevState,
+        environment: {
+          ...prevState.environment,
+          isDay: isDayTime(),
+        },
+      }));
+      // Fetch current weather for the UI
+      fetchWeatherData(gameState.environment.userLocation);
 
-    return () => clearInterval(timer);
+      let lastLogicUpdate = Date.now();
+      const timer = setInterval(() => {
+        const now = Date.now();
+
+        // --- Game Logic Update (runs once per second) ---
+        if (now - lastLogicUpdate >= 1000) {
+          lastLogicUpdate = now;
+
+          setGameState(prevState => {
+            // Only update if the game has started (seed is planted)
+            if (!hasPlantedSeed) return prevState;
+            
+            // --- Sun Intensity Calculation ---
+            const { sunrise, sunset } = prevState.environment;
+            let sunIntensity = 0;
+            const currentTime = new Date(); // Use real time for this calculation
+            if (sunrise && sunset) {
+              const sunriseDate = new Date(sunrise);
+              const sunsetDate = new Date(sunset);
+              if (currentTime > sunriseDate && currentTime < sunsetDate) {
+                const totalDaylight = sunsetDate.getTime() - sunriseDate.getTime();
+                const timeSinceSunrise = currentTime.getTime() - sunriseDate.getTime();
+                const dayPercentage = timeSinceSunrise / totalDaylight;
+                sunIntensity = Math.sin(dayPercentage * Math.PI);
+              }
+            }
+
+            let stateWithWatering = prevState;
+            const hydrationRate = IS_DEBUG_MODE ? 0.1 : 0.01;
+            // Continuous watering - must be immutable
+            if (isWateringRef.current) {
+              stateWithWatering = {
+                ...prevState,
+                plant: {
+                  ...prevState.plant,
+                  hydration: Math.min(1, prevState.plant.hydration + hydrationRate),
+                }
+              };
+            }
+
+            // Pass the (potentially updated) state to the main game update function.
+            const newState = updateGame(stateWithWatering, sunIntensity);
+            
+            if (newState === null) { // Game over signal
+              const freshState = {
+                ...initialGameState,
+                environment: prevState.environment, // Keep weather and location
+                lastUpdate: new Date(),
+              };
+              saveGame(freshState);
+              return freshState;
+            }
+
+            saveGame(newState);
+            return newState;
+          });
+        }
+
+
+        // --- Water Drop Animation (runs every frame) ---
+        setWaterDrops(prevDrops => {
+          let newDrops = [...prevDrops];
+          
+          // Add new drops if watering
+          if (isWateringRef.current) {
+            // Calculate spout position based on can position and rotation
+            const spoutOffsetX = -95; // Shifted back to the right
+            const spoutOffsetY = -70; // Move the origin up to match the spout
+            const angle = -Math.PI / 4;  
+            const rotatedSpoutX = spoutOffsetX * Math.cos(angle) - spoutOffsetY * Math.sin(angle);
+            const rotatedSpoutY = spoutOffsetX * Math.sin(angle) + spoutOffsetY * Math.cos(angle);
+            
+            const spoutX = canPosRef.current.x + rotatedSpoutX;
+            const spoutY = canPosRef.current.y + rotatedSpoutY;
+
+            for (let i = 0; i < 2; i++) { // Add 2 drops per frame for a fuller stream
+              newDrops.push({
+                id: Date.now() + Math.random(),
+                x: spoutX + (Math.random() - 0.5) * 30, // Wider horizontal spread
+                y: spoutY,
+                speed: 2 + Math.random() * 2
+              });
+            }
+          }
+          
+          // Move and filter existing drops
+          newDrops = newDrops
+            .map(drop => ({ ...drop, y: drop.y + drop.speed }))
+            .filter(drop => drop.y < SOIL_LEVEL - 20);
+
+          return newDrops;
+        });
+      }, 1000 / 60); // Run at 60fps for smooth animation
+
+      return () => clearInterval(timer);
+    };
+
+    performStartup();
   }, [hasPlantedSeed]);
 
   useEffect(() => {
@@ -340,11 +383,22 @@ function App() {
     if (!audio) return;
 
     if (isWatering) {
-      audio.play().catch(e => console.error("Watering sound failed to play", e));
+      wateringTimeoutRef.current = window.setTimeout(() => {
+        audio.play().catch(e => console.error("Watering sound failed to play", e));
+      }, 200); // 200ms delay
     } else {
+      if (wateringTimeoutRef.current) {
+        clearTimeout(wateringTimeoutRef.current);
+      }
       audio.pause();
       audio.currentTime = 0;
     }
+
+    return () => {
+      if (wateringTimeoutRef.current) {
+        clearTimeout(wateringTimeoutRef.current);
+      }
+    };
   }, [isWatering]);
 
   useEffect(() => {
@@ -422,6 +476,11 @@ function App() {
           </form>
         )}
       </div>
+      {isSimulating && (
+        <div className="simulation-overlay">
+          <p>Updating your plant's progress...</p>
+        </div>
+      )}
       <header className="App-header">
         <h1>Nur Natur</h1>
       </header>
@@ -822,7 +881,7 @@ function Game({
       }
 
       // 4. Draw Water Drops
-      ctx.fillStyle = 'rgba(100, 150, 255, 0.8)';
+      ctx.fillStyle = ' rgba(191, 219, 255, 0.9)';
       waterDrops.forEach(drop => {
         ctx.beginPath();
         ctx.arc(drop.x, drop.y, 2, 0, Math.PI * 2);

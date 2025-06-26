@@ -45,25 +45,28 @@ export interface PlantState {
   stage: PlantStage;
   growth: number; // A continuously increasing value representing overall plant maturity (0 to infinity)
   hydration: number; // A value from 0 to 1
-  lastWatered: Date | null;
   timeAtZeroHydration: number; // in hours
   structure: PlantSegment[];
+}
+
+interface EnvironmentState {
+  isDay: boolean;
+  weather: {
+    temperature: number;
+    isRaining: boolean;
+  } | null;
+  userLocation: string | null;
+  sunrise: string | null;
+  sunset: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface GameState {
   plant: PlantState;
   lastUpdate: Date;
   teaLeavesHarvested: number;
-  environment: {
-    isDay: boolean;
-    weather: {
-      temperature: number; // in Celsius
-      isRaining: boolean;
-    } | null;
-    userLocation: string | null;
-    sunrise: string | null; // ISO date string
-    sunset: string | null;  // ISO date string
-  };
+  environment: EnvironmentState;
 }
 
 export const initialGameState: GameState = {
@@ -71,7 +74,6 @@ export const initialGameState: GameState = {
     stage: 'Seed',
     growth: 0,
     hydration: 0.5,
-    lastWatered: null,
     timeAtZeroHydration: 0,
     structure: [],
   },
@@ -83,5 +85,7 @@ export const initialGameState: GameState = {
     userLocation: null,
     sunrise: null,
     sunset: null,
+    latitude: null,
+    longitude: null,
   },
 }; 
