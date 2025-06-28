@@ -981,7 +981,8 @@ function Game({
         } else if (segment.type === 'flower' && flowerImage?.complete) {
             ctx.save();
             ctx.translate(segment.x, segment.y);
-            const angle = segment.x > PLANT_BASE_X ? -Math.PI / 2 : Math.PI / 2;
+            // Point away from the stem
+            const angle = segment.x > PLANT_BASE_X ? Math.PI / 2 : -Math.PI / 2;
             ctx.rotate(angle);
             const h = segment.size * 5; 
             const w = h;
