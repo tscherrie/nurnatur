@@ -161,23 +161,27 @@ const GROWTH_THRESHOLDS: Record<PlantStage, number> = {
   Seed: 0,
   Sprout: 1,
   Young: 2,
-  Mature: 3,
-  Flowering: 4,
-  Harvestable: 5,
+  Mature: 4,
+  Flowering: 5,
+  Harvestable: 6,
   Withering: Infinity, // A special case
   Dead: Infinity, // A special case
 };
 
 // Structure-specific growth points
 const STRUCTURE_GROWTH_POINTS = {
-  STEM_FULL_HEIGHT: 2.5,
-  LEAF_1: 3.2,
-  LEAF_2: 3.4,
-  LEAF_3: 3.6,
-  LEAF_4: 3.8,
-  FLOWER_1: 4.2,
-  FLOWER_2: 4.4,
-  FLOWER_3: 4.6,
+  SPROUT_HEIGHT_1: 1.2,
+  SPROUT_HEIGHT_2: 1.5,
+  SPROUT_LEAF_1: 1.8,
+  YOUNG_STEM_FULL_HEIGHT: 2.5,
+  MATURE_STEM_GROWTH_END: 4.5,
+  FLOWER_1: 5.2,
+  FLOWER_2: 5.4,
+  FLOWER_3: 5.6,
+  BUD_1: 6.1,
+  BUD_2: 6.2,
+  BUD_3: 6.3,
+  BUD_4: 6.4,
 };
 
 export const GROWTH_HYDRATION_THRESHOLD = 0.4; // Plant only grows if hydration is above 40%
@@ -200,13 +204,6 @@ const DEHYDRATION_TEMP_FACTOR = 0.05; // 5% change in dehydration per degree abo
 const REAL_WITHER_RATE_PER_PART_HOURS = 4;
 const DEBUG_WITHER_RATE_PER_PART_HOURS = 5 / 3600; // 5 seconds per part in debug
 const WITHER_RATE_PER_PART_HOURS = IS_DEBUG_MODE ? DEBUG_WITHER_RATE_PER_PART_HOURS : REAL_WITHER_RATE_PER_PART_HOURS;
-
-const EXPERIMENTAL_STRUCTURE_GROWTH_POINTS = {
-  SPROUT_HEIGHT_1: 1.2,
-  SPROUT_HEIGHT_2: 1.5,
-  SPROUT_LEAF_1: 1.8,
-  YOUNG_STEM_FULL_HEIGHT: 2.5,
-};
 
 function getTemperatureGrowthFactor(temp: number): number {
   if (temp < 15) return 0.20;
@@ -278,7 +275,7 @@ function updateDehydrationAndWithering(state: GameState, elapsedHours: number) {
   return { newHydration, newTimeAtZeroHydration, newStructure };
 }
 
-function experimentalUpdateGrowthAndStructure(state: GameState, elapsedHours: number, currentHydration: number, currentStructure: PlantSegment[], sunIntensity: number) {
+function updateGrowthAndStructure(state: GameState, elapsedHours: number, currentHydration: number, currentStructure: PlantSegment[], sunIntensity: number) {
   let newGrowth = state.plant.growth;
   let newStructure = [...currentStructure];
 
@@ -308,13 +305,13 @@ function experimentalUpdateGrowthAndStructure(state: GameState, elapsedHours: nu
       const stemIndex = newStructure.findIndex(s => s.id === mainStem.id);
       let targetHeight = mainStem.height;
 
-      if (newGrowth >= EXPERIMENTAL_STRUCTURE_GROWTH_POINTS.SPROUT_HEIGHT_1) targetHeight = 30;
-      if (newGrowth >= EXPERIMENTAL_STRUCTURE_GROWTH_POINTS.SPROUT_HEIGHT_2) targetHeight = 40;
+      if (newGrowth >= STRUCTURE_GROWTH_POINTS.SPROUT_HEIGHT_1) targetHeight = 30;
+      if (newGrowth >= STRUCTURE_GROWTH_POINTS.SPROUT_HEIGHT_2) targetHeight = 40;
       
       const currentStem = newStructure[stemIndex] as StemData;
       newStructure[stemIndex] = { ...currentStem, height: Math.max(currentStem.height, targetHeight) };
       
-      if (newGrowth >= EXPERIMENTAL_STRUCTURE_GROWTH_POINTS.SPROUT_LEAF_1 && existingLeaves.length === 0) {
+      if (newGrowth >= STRUCTURE_GROWTH_POINTS.SPROUT_LEAF_1 && existingLeaves.length === 0) {
         const sproutStem = newStructure[stemIndex] as StemData;
         const yPosition = sproutStem.y - sproutStem.height + 5;
         const xPosition = sproutStem.x;
@@ -327,38 +324,52 @@ function experimentalUpdateGrowthAndStructure(state: GameState, elapsedHours: nu
       const stemIndex = newStructure.findIndex(s => s.id === mainStem.id);
 
       const oldHeight = mainStem.height;
-      const baseHeight = 40;
-      const maxHeight = 120;
-      const growthProgress = Math.min(1, (newGrowth - GROWTH_THRESHOLDS.Young) / (EXPERIMENTAL_STRUCTURE_GROWTH_POINTS.YOUNG_STEM_FULL_HEIGHT - GROWTH_THRESHOLDS.Young));
-      const targetHeight = baseHeight + (growthProgress * (maxHeight - baseHeight));
+      let targetHeight = oldHeight;
+
+      const leaves = newStructure.filter(s => s.type === 'leaf') as LeafData[];
+      const allLeavesGrown = leaves.length === 4 && leaves.every(l => l.currentSize === l.targetSize);
+
+      if (allLeavesGrown && newGrowth >= GROWTH_THRESHOLDS.Mature) {
+        // Mature Stage: Stem Elongation to final height
+        const baseHeight = 120;
+        const maxHeight = 260; // The final height for a mature plant
+        const growthProgress = Math.min(1, (newGrowth - GROWTH_THRESHOLDS.Mature) / (STRUCTURE_GROWTH_POINTS.MATURE_STEM_GROWTH_END - GROWTH_THRESHOLDS.Mature));
+        targetHeight = baseHeight + (growthProgress * (maxHeight - baseHeight));
+      } else {
+        // Young Stage: Stem Growth
+        const baseHeight = 40;
+        const maxHeight = 120;
+        const growthProgress = Math.min(1, (newGrowth - GROWTH_THRESHOLDS.Young) / (STRUCTURE_GROWTH_POINTS.YOUNG_STEM_FULL_HEIGHT - GROWTH_THRESHOLDS.Young));
+        targetHeight = baseHeight + (growthProgress * (maxHeight - baseHeight));
+      }
       
       const heightGrown = targetHeight - oldHeight;
       if (heightGrown > 0) {
         const currentStem = newStructure[stemIndex] as StemData;
-        newStructure[stemIndex] = { ...currentStem, height: targetHeight };
+        newStructure[stemIndex] = { ...currentStem, height: Math.max(oldHeight, targetHeight) };
       }
 
-      let leaves = newStructure.filter(s => s.type === 'leaf') as LeafData[];
+      let currentLeaves = newStructure.filter(s => s.type === 'leaf') as LeafData[];
       const stem = newStructure.find(s => s.type === 'stem') as StemData;
 
       // If all leaves were plucked, regrow the first one to restart the cycle.
-      if (leaves.length === 0 && stem && newGrowth >= EXPERIMENTAL_STRUCTURE_GROWTH_POINTS.SPROUT_LEAF_1) {
+      if (currentLeaves.length === 0 && stem && newGrowth >= STRUCTURE_GROWTH_POINTS.SPROUT_LEAF_1) {
         const yPosition = stem.y - stem.height + 5;
         const xPosition = stem.x;
         const newLeaf: LeafData = { id: `leaf-${Date.now()}`, type: 'leaf', x: xPosition, y: yPosition, targetSize: 8, currentSize: 8, angle: Math.PI / 4, withered: false };
         newStructure.push(newLeaf);
-        leaves = newStructure.filter(s => s.type === 'leaf') as LeafData[]; // Refresh leaves array
+        currentLeaves = newStructure.filter(s => s.type === 'leaf') as LeafData[]; // Refresh leaves array
       }
 
-      if (leaves.length === 1 && leaves[0].currentSize >= 10) {
-          const firstLeaf = leaves[0];
+      if (currentLeaves.length === 1 && currentLeaves[0].currentSize >= 10) {
+          const firstLeaf = currentLeaves[0];
           const newLeaf: LeafData = {
               id: `leaf-${Date.now()}`, type: 'leaf', x: stem.x, y: firstLeaf.y,
               targetSize: 12, currentSize: 6, angle: -Math.PI / 4, withered: false
           };
           newStructure.push(newLeaf);
-      } else if (leaves.length === 2) {
-          const secondLeaf = leaves.find(l => l.angle < 0);
+      } else if (currentLeaves.length === 2) {
+          const secondLeaf = currentLeaves.find(l => l.angle < 0);
           if (secondLeaf && secondLeaf.currentSize >= 9) {
               const newLeaf: LeafData = {
                   id: `leaf-${Date.now()}`, type: 'leaf', x: stem.x, y: stem.y - (stem.height * 0.33),
@@ -366,9 +377,9 @@ function experimentalUpdateGrowthAndStructure(state: GameState, elapsedHours: nu
               };
               newStructure.push(newLeaf);
           }
-      } else if (leaves.length === 3) {
-          const topLeaves = leaves.filter(l => Math.abs(l.y - leaves[0].y) < 1);
-          const thirdLeaf = leaves.find(l => !topLeaves.some(tl => tl.id === l.id));
+      } else if (currentLeaves.length === 3) {
+          const topLeaves = currentLeaves.filter(l => Math.abs(l.y - currentLeaves[0].y) < 1);
+          const thirdLeaf = currentLeaves.find(l => !topLeaves.some(tl => tl.id === l.id));
           if (thirdLeaf && thirdLeaf.currentSize >= 9) {
               const newLeaf: LeafData = {
                   id: `leaf-${Date.now()}`, type: 'leaf', x: stem.x, y: stem.y - (stem.height * 0.66),
@@ -378,12 +389,12 @@ function experimentalUpdateGrowthAndStructure(state: GameState, elapsedHours: nu
           }
       }
 
-      leaves = newStructure.filter(s => s.type === 'leaf') as LeafData[];
-      if (leaves.length > 0) {
+      currentLeaves = newStructure.filter(s => s.type === 'leaf') as LeafData[];
+      if (currentLeaves.length > 0) {
           const oldTopY = stem.y - oldHeight + 5;
           const oldLowerY = stem.y - oldHeight * 0.33;
 
-          leaves.forEach(leaf => {
+          currentLeaves.forEach(leaf => {
               const leafIndex = newStructure.findIndex(s => s.id === leaf.id);
               if (leafIndex === -1) return;
 
@@ -415,124 +426,6 @@ function experimentalUpdateGrowthAndStructure(state: GameState, elapsedHours: nu
   return { newGrowth, newStructure };
 }
 
-function legacyUpdateGrowthAndStructure(state: GameState, elapsedHours: number, currentHydration: number, currentStructure: PlantSegment[], sunIntensity: number) {
-  let newGrowth = state.plant.growth;
-  let newStructure = [...currentStructure];
-
-  const isAnyPartWithered = newStructure.some(p => p.withered);
-  const hydrationFactor = getHydrationGrowthFactor(currentHydration);
-
-  if (!isAnyPartWithered && hydrationFactor > 0) {
-    const sunGrowthFactor = 1 + (DAY_GROWTH_MULTIPLIER - 1) * sunIntensity;
-    const temp = state.environment.weather?.temperature ?? 20;
-    const tempGrowthFactor = getTemperatureGrowthFactor(temp);
-    const baseGrowthRate = GROWTH_RATE_PER_HOUR * sunGrowthFactor * tempGrowthFactor * hydrationFactor;
-    
-    const existingLeaves = newStructure.filter(s => s.type === 'leaf') as LeafData[];
-    const growingLeaf = existingLeaves.find(l => l.currentSize < l.targetSize);
-
-    if (growingLeaf) {
-      // A leaf is growing. Direct all growth energy here.
-      const leafIndex = newStructure.findIndex(s => s.id === growingLeaf.id);
-      // Use a multiplier of the base growth rate for leaf size increase
-      const leafGrowthAmount = baseGrowthRate * 8; // Grow leaf size faster than overall growth
-      const newSize = Math.min(growingLeaf.targetSize, growingLeaf.currentSize + (leafGrowthAmount * elapsedHours));
-      newStructure[leafIndex] = { ...growingLeaf, currentSize: newSize };
-      // Do not increment overall `newGrowth` while a leaf is growing.
-    } else {
-      // No leaf is growing. Proceed with main growth and check for new structures.
-      newGrowth += (baseGrowthRate * elapsedHours);
-
-      const hasSeed = newStructure.some(s => s.type === 'seed');
-      
-      if (hasSeed && newGrowth >= GROWTH_THRESHOLDS.Sprout) {
-        newStructure = newStructure.filter(s => s.type !== 'seed');
-        const newStem = { id: `stem-${Date.now()}`, type: 'stem' as const, x: PLANT_BASE_X, y: PLANT_BASE_Y, width: 4, height: 20, withered: false };
-        newStructure.push(newStem);
-      }
-
-      const mainStem = newStructure.find(s => s.type === 'stem');
-
-      if (newGrowth >= GROWTH_THRESHOLDS.Young && !mainStem) {
-        const newStem = { id: `stem-${Date.now()}`, type: 'stem' as const, x: PLANT_BASE_X, y: PLANT_BASE_Y, width: 8, height: 40, withered: false };
-        newStructure.push(newStem);
-      }
-
-      if (mainStem && newGrowth >= GROWTH_THRESHOLDS.Young) {
-        const baseHeight = 40;
-        const maxHeight = 120;
-        const growthProgress = Math.min(1, (newGrowth - GROWTH_THRESHOLDS.Young) / (STRUCTURE_GROWTH_POINTS.STEM_FULL_HEIGHT - GROWTH_THRESHOLDS.Young));
-        const targetHeight = baseHeight + (growthProgress * (maxHeight - baseHeight));
-        const stemIndex = newStructure.findIndex(s => s.id === mainStem.id);
-        if (stemIndex !== -1) {
-          const currentStem = newStructure[stemIndex];
-          if (currentStem.type === 'stem') {
-            newStructure[stemIndex] = { ...currentStem, height: Math.max(currentStem.height, targetHeight) };
-          }
-        }
-      }
-
-      if (mainStem && newGrowth >= GROWTH_THRESHOLDS.Mature) {
-        const stemIndex = newStructure.findIndex(s => s.id === mainStem.id);
-        if (stemIndex !== -1) {
-          const currentStem = newStructure[stemIndex];
-          if (currentStem.type === 'stem') {
-            newStructure[stemIndex] = { ...currentStem, width: 12 };
-          }
-        }
-      }
-      
-      // If no leaf is growing, check if we should add a new one.
-      const leafThresholds = [STRUCTURE_GROWTH_POINTS.LEAF_1, STRUCTURE_GROWTH_POINTS.LEAF_2, STRUCTURE_GROWTH_POINTS.LEAF_3, STRUCTURE_GROWTH_POINTS.LEAF_4];
-      if (mainStem && existingLeaves.length < leafThresholds.length && newGrowth >= leafThresholds[existingLeaves.length]) {
-          const i = existingLeaves.length;
-          const side = (i % 2 === 0) ? -1 : 1;
-          const yPosition = mainStem.y - (mainStem.height * (0.2 + (Math.floor(i / 2) * 0.25)));
-          const angle = side * Math.PI / 4;
-          const targetSize = 12;
-          const newLeaf: LeafData = { id: `leaf-${Date.now()}`, type: 'leaf', x: mainStem.x, y: yPosition, targetSize, currentSize: targetSize / 2, angle, withered: false };
-          newStructure.push(newLeaf);
-      }
-
-      const flowerThresholds = [STRUCTURE_GROWTH_POINTS.FLOWER_1, STRUCTURE_GROWTH_POINTS.FLOWER_2, STRUCTURE_GROWTH_POINTS.FLOWER_3];
-      const existingFlowers = newStructure.filter(s => s.type === 'flower').length;
-       if (mainStem && existingFlowers < flowerThresholds.length && newGrowth >= flowerThresholds[existingFlowers]) {
-          const i = existingFlowers;
-          const yPos = mainStem.y - mainStem.height + (i * 30);
-          const xPos = mainStem.x + ((i % 2 === 0) ? -20 : 20);
-          const newFlower: FlowerData = { id: `flower-${Date.now()}`, type: 'flower', x: xPos, y: yPos, size: 10, withered: false };
-          newStructure.push(newFlower);
-      }
-
-      if (newGrowth >= GROWTH_THRESHOLDS.Harvestable) {
-          const currentLeaves = newStructure.filter(s => s.type === 'leaf') as LeafData[];
-          const existingBuds = newStructure.filter(s => s.type === 'bud') as BudData[];
-          const leavesWithoutBuds = currentLeaves.filter(leaf => !existingBuds.some(bud => bud.leafId === leaf.id));
-          
-          if (leavesWithoutBuds.length > 0) {
-              const CHANCE_TO_GROW_BUD_PER_HOUR = IS_DEBUG_MODE ? 0.5 * 3600 : 0.5;
-              if (Math.random() < CHANCE_TO_GROW_BUD_PER_HOUR * elapsedHours) {
-                  const leafToGrowBudOn = leavesWithoutBuds[0];
-                  const leafOffset = leafToGrowBudOn.angle > 0 ? leafToGrowBudOn.currentSize : -leafToGrowBudOn.currentSize;
-                  const budX = leafToGrowBudOn.x + Math.cos(leafToGrowBudOn.angle) * leafOffset;
-                  const budY = leafToGrowBudOn.y + Math.sin(leafToGrowBudOn.angle) * leafOffset;
-                  const newBud: BudData = { id: `bud-${Date.now()}`, type: 'bud', x: budX, y: budY, size: 3, withered: false, leafId: leafToGrowBudOn.id };
-                  newStructure.push(newBud);
-              }
-          }
-      }
-    }
-  }
-  return { newGrowth, newStructure };
-}
-
-function updateGrowthAndStructure(state: GameState, elapsedHours: number, currentHydration: number, currentStructure: PlantSegment[], sunIntensity: number) {
-    if (IS_DEBUG_MODE) {
-        return experimentalUpdateGrowthAndStructure(state, elapsedHours, currentHydration, currentStructure, sunIntensity);
-    }
-    return legacyUpdateGrowthAndStructure(state, elapsedHours, currentHydration, currentStructure, sunIntensity);
-}
-
 function updateState(
   currentGrowth: number, 
   currentStructure: PlantSegment[]
@@ -546,13 +439,14 @@ function updateState(
   // Cap growth based on existing structure to allow regrowth.
   // This is a cascade of Math.min to find the lowest (most restrictive) cap.
   let growthCap = GROWTH_THRESHOLDS.Harvestable + 1; // Start high
-  if (existingFlowers < 3) growthCap = Math.min(growthCap, STRUCTURE_GROWTH_POINTS.FLOWER_3);
-  if (existingFlowers < 2) growthCap = Math.min(growthCap, STRUCTURE_GROWTH_POINTS.FLOWER_2);
-  if (existingFlowers < 1) growthCap = Math.min(growthCap, STRUCTURE_GROWTH_POINTS.FLOWER_1);
-  if (existingLeaves < 4) growthCap = Math.min(growthCap, STRUCTURE_GROWTH_POINTS.LEAF_4);
-  if (existingLeaves < 3) growthCap = Math.min(growthCap, STRUCTURE_GROWTH_POINTS.LEAF_3);
-  if (existingLeaves < 2) growthCap = Math.min(growthCap, STRUCTURE_GROWTH_POINTS.LEAF_2);
-  if (existingLeaves < 1) growthCap = Math.min(growthCap, STRUCTURE_GROWTH_POINTS.LEAF_1);
+  if (existingFlowers < 3) growthCap = Math.min(growthCap, 5.6);
+  if (existingFlowers < 2) growthCap = Math.min(growthCap, 5.4);
+  if (existingFlowers < 1) growthCap = Math.min(growthCap, 5.2);
+  
+  const allLeavesFullyGrown = currentStructure.filter(s => s.type === 'leaf').length === 4;
+  if (!allLeavesFullyGrown) {
+    growthCap = Math.min(growthCap, GROWTH_THRESHOLDS.Mature);
+  }
 
   newGrowth = Math.min(newGrowth, growthCap);
 
