@@ -7,7 +7,8 @@ export type PlantStage =
   | 'Mature' 
   | 'Flowering'
   | 'Harvestable'
-  | 'Withering';
+  | 'Withering'
+  | 'Dead';
 
 export type BaseSegment = {
   id: string;
@@ -22,11 +23,16 @@ export type StemData = BaseSegment & {
   width: number;
 };
 
-export type LeafData = BaseSegment & {
+export interface LeafData {
+  id: string;
   type: 'leaf';
-  size: number;
-  angle: number; // The angle of the leaf in radians
-};
+  x: number;
+  y: number;
+  targetSize: number;
+  currentSize: number;
+  angle: number;
+  withered: boolean;
+}
 
 export type FlowerData = BaseSegment & {
   type: 'flower';

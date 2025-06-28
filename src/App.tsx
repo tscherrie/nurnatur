@@ -315,18 +315,11 @@ function App() {
             // Pass the (potentially updated) state to the main game update function.
             const newState = updateGame(stateWithWatering, sunIntensity);
             
-            if (newState === null) { // Game over signal
-              const freshState = {
-                ...initialGameState,
-                environment: prevState.environment, // Keep weather and location
-                lastUpdate: new Date(),
-              };
-              saveGame(freshState);
-              return freshState;
+            if (newState) {
+                saveGame(newState);
+                return newState;
             }
-
-            saveGame(newState);
-            return newState;
+            return prevState; // Should not happen with new logic, but safe fallback
           });
         }
 
@@ -429,6 +422,17 @@ function App() {
     }
   }, [gameState.plant.structure.length, hasPlantedSeed]);
 
+  const handleResetGame = () => {
+    const freshState = {
+        ...initialGameState,
+        environment: gameState.environment, // Keep weather and location settings
+        lastUpdate: new Date(),
+    };
+    saveGame(freshState);
+    setGameState(freshState);
+    setHasPlantedSeed(false); // Go back to the initial screen
+  };
+
   return (
     <div className="App">
       {IS_DEBUG_MODE && (
@@ -491,11 +495,12 @@ function App() {
           isWatering={isWatering}
           setIsWatering={setIsWatering}
           waterDrops={waterDrops}
+          onResetGame={handleResetGame}
         />
       </main>
       <audio ref={audioRef} loop />
       <audio ref={wateringAudioRef} src="/assets/audio/objects/watering_can.mp3" loop />
-      </div>
+    </div>
   );
 }
 
@@ -511,42 +516,53 @@ interface GameProps {
   isWatering: boolean;
   setIsWatering: (isWatering: boolean) => void;
   waterDrops: {id: number, x: number, y: number}[];
+  onResetGame: () => void;
 }
 
 // --- Hit Detection ---
-function isClickInsideLeaf(x: number, y: number, leaf: LeafData): boolean {
-  // This is a simplified hit detection for an ellipse.
-  // 1. Translate the click coordinates to be relative to the leaf's attachment point.
+function isClickInsideLeaf(x: number, y: number, leaf: LeafData, leafImage: HTMLImageElement | null): boolean {
+  if (!leafImage || !leafImage.naturalWidth) return false;
+
+  const aspectRatio = leafImage.naturalWidth / leafImage.naturalHeight;
+  const h = leaf.currentSize * 5;
+  const w = h * aspectRatio;
+
+  // The image is drawn from (-w/2, -h) to (w/2, 0) in its local, rotated coordinate system.
+  // We perform an inverse transformation on the click coordinates to check if they fall within this box.
+  
+  // 1. Translate click to the leaf's pivot point
   const translatedX = x - leaf.x;
   const translatedY = y - leaf.y;
 
-  // 2. Rotate the translated coordinates in the *opposite* direction of the leaf's angle.
+  // 2. Rotate the translated point by the *opposite* of the leaf's angle
   const cosAngle = Math.cos(-leaf.angle);
   const sinAngle = Math.sin(-leaf.angle);
-  const rotatedX = translatedX * cosAngle - translatedY * sinAngle;
-  const rotatedY = translatedX * sinAngle + translatedY * cosAngle;
+  const localX = translatedX * cosAngle - translatedY * sinAngle;
+  const localY = translatedX * sinAngle + translatedY * cosAngle;
 
-  // 3. Check if the rotated point is within the un-rotated ellipse bounds.
-  const leafOffset = leaf.angle > 0 ? leaf.size : -leaf.size;
-  const dx = rotatedX - leafOffset;
-  const dy = rotatedY;
-  
-  const rx = leaf.size;
-  const ry = leaf.size / 2;
-
-  return (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1;
+  // 3. Check if the local point is within the image's drawing bounds
+  return localX >= -w / 2 && localX <= w / 2 && localY >= -h && localY <= 0;
 }
 
-function isClickInsideBud(x: number, y: number, bud: BudData): boolean {
-  const dx = x - bud.x;
-  const dy = y - bud.y;
-  return (dx * dx + dy * dy) <= (bud.size * bud.size);
+function isClickInsideCenteredImage(x: number, y: number, segment: { x: number, y: number, size: number }, scale: number): boolean {
+    const h = segment.size * scale;
+    const w = h; // Assuming a square image for buds and flowers
+
+    const halfW = w / 2;
+    const halfH = h / 2;
+
+    return (
+        x >= segment.x - halfW &&
+        x <= segment.x + halfW &&
+        y >= segment.y - halfH &&
+        y <= segment.y + halfH
+    );
 }
 
 function Game({ 
   gameState, setGameState, hasPlantedSeed, setHasPlantedSeed, 
   canPos, setCanPos, isDraggingCan, setIsDraggingCan, isWatering, setIsWatering,
-  waterDrops
+  waterDrops, onResetGame
 }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [soilImages, setSoilImages] = useState<{[key: string]: HTMLImageElement}>({});
@@ -694,6 +710,11 @@ function Game({
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (gameState.plant.stage === 'Dead') {
+      onResetGame();
+      return;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -703,18 +724,18 @@ function Game({
     // Check if a withered part was clicked
     const witheredPart = gameState.plant.structure.find(p => {
         if (!p.withered) return false;
-        // Simple bounding box for now, can be improved
+        
         if (p.type === 'stem') {
             return x >= p.x - p.width / 2 && x <= p.x + p.width / 2 && y >= p.y - p.height && y <= p.y;
         }
         if (p.type === 'leaf') {
-            return isClickInsideLeaf(x, y, p as LeafData);
+            return isClickInsideLeaf(x, y, p as LeafData, leafImage);
         }
         if (p.type === 'flower') {
-             return x >= p.x - p.size && x <= p.x + p.size && y >= p.y - p.size && y <= p.y + p.size;
+             return isClickInsideCenteredImage(x, y, p, 5);
         }
         if (p.type === 'bud') {
-            return isClickInsideBud(x, y, p as BudData);
+            return isClickInsideCenteredImage(x, y, p, 8);
         }
         return false;
     });
@@ -764,7 +785,7 @@ function Game({
       const buds = gameState.plant.structure.filter(s => s.type === 'bud' && !s.withered) as BudData[];
       
       for (const bud of buds) {
-        if (isClickInsideBud(x, y, bud)) {
+        if (isClickInsideCenteredImage(x, y, bud, 8)) {
           setGameState(prevState => {
             const newState = {
               ...prevState,
@@ -911,14 +932,14 @@ function Game({
             const h = 80; // Double the size
             const aspectRatio = seedImage.naturalWidth / seedImage.naturalHeight;
             const w = h * aspectRatio;
-            ctx.drawImage(seedImage, segment.x - w / 2, segment.y - h, w, h);
+            ctx.drawImage(seedImage, segment.x - w / 2, segment.y - (h * 0.5), w, h);
         } else if (segment.type === 'leaf' && leafImage?.complete) {
             ctx.save();
             ctx.translate(segment.x, segment.y);
             ctx.rotate(segment.angle);
             
             const aspectRatio = leafImage.naturalWidth / leafImage.naturalHeight;
-            const h = segment.size * 5; // Double the scale factor
+            const h = segment.currentSize * 5; // Use currentSize for dynamic growth
             const w = h * aspectRatio;
 
             // Since the image points up, we need to draw it "above" the attachment point.
@@ -929,7 +950,7 @@ function Game({
 
             ctx.restore();
         } else if (segment.type === 'flower' && flowerImage?.complete) {
-            const h = segment.size * 8; // Double the scale factor
+            const h = segment.size * 5; // Double the scale factor
             const w = h; // Assume square for simplicity
             if (isWithered) ctx.globalAlpha = 0.5;
             ctx.drawImage(flowerImage, segment.x - w / 2, segment.y - h / 2, w, h);
@@ -943,6 +964,16 @@ function Game({
             if (isWithered) ctx.globalAlpha = 1.0;
         }
       });
+    }
+
+    // --- Death Screen Overlay ---
+    if (gameState.plant.stage === 'Dead') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Your plant has died.', canvas.width / 2, canvas.height / 2 - 20);
     }
 
     // --- UI Text Overlays ---
@@ -963,6 +994,7 @@ function Game({
   }, [gameState, hasPlantedSeed, soilImages, planterImage, backgroundImages, isDraggingCan, isWatering, canPos, waterDrops, leafImage, flowerImage, budImage, seedImage]);
 
   return (
+    <>
     <canvas
       ref={canvasRef}
       width={GAME_WIDTH}
@@ -975,8 +1007,9 @@ function Game({
       onTouchStart={handleInteractionStart}
       onTouchMove={handleInteractionMove}
       onTouchEnd={handleInteractionEnd}
-      style={{ cursor: isDraggingCan ? 'grabbing' : (isOverObject(mousePos, canPos, wateringCanImage) ? 'grab' : (!hasPlantedSeed ? 'pointer' : 'default')) }}
+      style={{ cursor: isDraggingCan ? 'grabbing' : (isOverObject(mousePos, canPos, wateringCanImage) ? 'grab' : (gameState.plant.stage === 'Dead' ? 'pointer' : (!hasPlantedSeed ? 'pointer' : 'default'))) }}
     ></canvas>
+    </>
   );
 }
 
