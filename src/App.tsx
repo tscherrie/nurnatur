@@ -981,7 +981,8 @@ function Game({
         } else if (segment.type === 'flower' && flowerImage?.complete) {
             ctx.save();
             ctx.translate(segment.x, segment.y);
-            ctx.rotate(Math.PI); // Rotate 180 degrees
+            const angle = segment.x > PLANT_BASE_X ? -Math.PI / 2 : Math.PI / 2;
+            ctx.rotate(angle);
             const h = segment.size * 5; 
             const w = h;
             if (isWithered) ctx.globalAlpha = 0.5;
@@ -989,11 +990,15 @@ function Game({
             if (isWithered) ctx.globalAlpha = 1.0;
             ctx.restore();
         } else if (segment.type === 'bud' && budImage?.complete) {
-            const h = segment.size * 8;
+            ctx.save();
+            ctx.translate(segment.x, segment.y);
+            ctx.rotate((segment as BudData).angle);
+            const h = segment.size * 16;
             const w = h;
             if (isWithered) ctx.globalAlpha = 0.5;
-            ctx.drawImage(budImage, segment.x - w / 2, segment.y - h / 2, w, h);
+            ctx.drawImage(budImage, -w / 2, -h / 2, w, h);
             if (isWithered) ctx.globalAlpha = 1.0;
+            ctx.restore();
         }
       });
     }

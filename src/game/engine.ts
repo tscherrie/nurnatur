@@ -451,7 +451,8 @@ function updateGrowthAndStructure(state: GameState, elapsedHours: number, curren
                 const leafOffset = leafToGrowBudOn.currentSize;
                 const budX = leafToGrowBudOn.x + Math.cos(leafToGrowBudOn.angle) * leafOffset * 0.75;
                 const budY = leafToGrowBudOn.y + Math.sin(leafToGrowBudOn.angle) * leafOffset * 0.75;
-                const newBud: BudData = { id: `bud-${Date.now()}`, type: 'bud', x: budX, y: budY, size: 3, withered: false, leafId: leafToGrowBudOn.id };
+                const budAngle = leafToGrowBudOn.angle + Math.PI; // Point back towards the stem
+                const newBud: BudData = { id: `bud-${Date.now()}`, type: 'bud', x: budX, y: budY, size: 3, withered: false, leafId: leafToGrowBudOn.id, angle: budAngle };
                 newStructure.push(newBud);
              }
         }

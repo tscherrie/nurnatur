@@ -43,6 +43,7 @@ export type BudData = BaseSegment & {
   type: 'bud';
   size: number;
   leafId: string; // Reference to which leaf this bud is attached to
+  angle: number;
 };
 
 // A type guard to ensure we handle all segment types in our rendering logic.
