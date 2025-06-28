@@ -979,14 +979,17 @@ function Game({
 
             ctx.restore();
         } else if (segment.type === 'flower' && flowerImage?.complete) {
-            const h = segment.size * 5; // Double the scale factor
-            const w = h; // Assume square for simplicity
+            ctx.save();
+            ctx.translate(segment.x, segment.y);
+            ctx.rotate(Math.PI); // Rotate 180 degrees
+            const h = segment.size * 5; 
+            const w = h;
             if (isWithered) ctx.globalAlpha = 0.5;
-            ctx.drawImage(flowerImage, segment.x - w / 2, segment.y - h / 2, w, h);
+            ctx.drawImage(flowerImage, -w / 2, -h / 2, w, h);
             if (isWithered) ctx.globalAlpha = 1.0;
-
+            ctx.restore();
         } else if (segment.type === 'bud' && budImage?.complete) {
-            const h = segment.size * 8; // Double the scale factor
+            const h = segment.size * 8;
             const w = h;
             if (isWithered) ctx.globalAlpha = 0.5;
             ctx.drawImage(budImage, segment.x - w / 2, segment.y - h / 2, w, h);

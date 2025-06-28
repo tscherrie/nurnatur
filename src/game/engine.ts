@@ -422,6 +422,40 @@ function updateGrowthAndStructure(state: GameState, elapsedHours: number, curren
           });
       }
     }
+    
+    // --- Flowering Stage ---
+    if (newGrowth >= GROWTH_THRESHOLDS.Flowering) {
+        const flowerThresholds = [STRUCTURE_GROWTH_POINTS.FLOWER_1, STRUCTURE_GROWTH_POINTS.FLOWER_2, STRUCTURE_GROWTH_POINTS.FLOWER_3];
+        const existingFlowers = newStructure.filter(s => s.type === 'flower').length;
+        const stem = newStructure.find(s => s.type === 'stem') as StemData;
+        if (stem && existingFlowers < flowerThresholds.length && newGrowth >= flowerThresholds[existingFlowers]) {
+            const i = existingFlowers;
+            const yPos = stem.y - stem.height + (i * 40) + 20;
+            const xPos = stem.x + ((i % 2 === 0) ? -25 : 25);
+            const newFlower: FlowerData = { id: `flower-${Date.now()}`, type: 'flower', x: xPos, y: yPos, size: 10, withered: false };
+            newStructure.push(newFlower);
+        }
+    }
+
+    // --- Harvestable Stage (Buds) ---
+    if (newGrowth >= GROWTH_THRESHOLDS.Harvestable) {
+        const leaves = newStructure.filter(s => s.type === 'leaf') as LeafData[];
+        const existingBuds = newStructure.filter(s => s.type === 'bud') as BudData[];
+        const budThresholds = [STRUCTURE_GROWTH_POINTS.BUD_1, STRUCTURE_GROWTH_POINTS.BUD_2, STRUCTURE_GROWTH_POINTS.BUD_3, STRUCTURE_GROWTH_POINTS.BUD_4];
+        
+        if (existingBuds.length < budThresholds.length && newGrowth >= budThresholds[existingBuds.length]) {
+             const leafToGrowBudOn = leaves[existingBuds.length % leaves.length];
+             const existingBudForThisLeaf = existingBuds.some(bud => bud.leafId === leafToGrowBudOn.id);
+
+             if (!existingBudForThisLeaf) {
+                const leafOffset = leafToGrowBudOn.currentSize;
+                const budX = leafToGrowBudOn.x + Math.cos(leafToGrowBudOn.angle) * leafOffset * 0.75;
+                const budY = leafToGrowBudOn.y + Math.sin(leafToGrowBudOn.angle) * leafOffset * 0.75;
+                const newBud: BudData = { id: `bud-${Date.now()}`, type: 'bud', x: budX, y: budY, size: 3, withered: false, leafId: leafToGrowBudOn.id };
+                newStructure.push(newBud);
+             }
+        }
+    }
   }
   return { newGrowth, newStructure };
 }
@@ -436,20 +470,15 @@ function updateState(
   const existingLeaves = currentStructure.filter(s => s.type === 'leaf').length;
   const existingFlowers = currentStructure.filter(s => s.type === 'flower').length;
   
-  // Cap growth based on existing structure to allow regrowth.
-  // This is a cascade of Math.min to find the lowest (most restrictive) cap.
-  let growthCap = GROWTH_THRESHOLDS.Harvestable + 1; // Start high
-  if (existingFlowers < 3) growthCap = Math.min(growthCap, 5.6);
-  if (existingFlowers < 2) growthCap = Math.min(growthCap, 5.4);
-  if (existingFlowers < 1) growthCap = Math.min(growthCap, 5.2);
-  
-  const allLeavesFullyGrown = currentStructure.filter(s => s.type === 'leaf').length === 4;
-  if (!allLeavesFullyGrown) {
-    growthCap = Math.min(growthCap, GROWTH_THRESHOLDS.Mature);
+  // This logic handles regressing the growth score if parts are plucked.
+  if (newGrowth >= STRUCTURE_GROWTH_POINTS.FLOWER_3 && existingFlowers < 3) newGrowth = STRUCTURE_GROWTH_POINTS.FLOWER_2;
+  else if (newGrowth >= STRUCTURE_GROWTH_POINTS.FLOWER_2 && existingFlowers < 2) newGrowth = STRUCTURE_GROWTH_POINTS.FLOWER_1;
+  else if (newGrowth >= STRUCTURE_GROWTH_POINTS.FLOWER_1 && existingFlowers < 1) newGrowth = GROWTH_THRESHOLDS.Flowering;
+
+  const allLeavesFullyGrown = currentStructure.filter(s => s.type === 'leaf' && (s as LeafData).currentSize === (s as LeafData).targetSize).length === 4;
+  if (newGrowth >= GROWTH_THRESHOLDS.Mature && !allLeavesFullyGrown) {
+      newGrowth = GROWTH_THRESHOLDS.Young;
   }
-
-  newGrowth = Math.min(newGrowth, growthCap);
-
 
   // --- Stage Updates Based on Growth ---
   let newStage = (Object.keys(GROWTH_THRESHOLDS) as PlantStage[])
@@ -461,12 +490,9 @@ function updateState(
   }
 
   // --- Cap Final Growth ---
-  const allLeaves = currentStructure.filter(p => p.type === 'leaf');
   const allBuds = currentStructure.filter(p => p.type === 'bud');
-  if (allLeaves.length === 4 && allBuds.length >= 4) {
-      if (allLeaves.every(leaf => allBuds.some(bud => bud.leafId === leaf.id))) {
-          newGrowth = Math.min(newGrowth, GROWTH_THRESHOLDS.Harvestable);
-      }
+  if (allBuds.length >= 4) {
+      newGrowth = Math.min(newGrowth, GROWTH_THRESHOLDS.Harvestable);
   }
 
   return { newGrowth, newStage };
