@@ -90,6 +90,7 @@ function App() {
   const [currentTrack, setCurrentTrack] = useState<string>('');
   const [isMuted, setIsMuted] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [newVersionAvailable, setNewVersionAvailable] = useState(false);
   
   // State for watering can interaction - lifted up from Game component
   const [canPos, setCanPos] = useState({ x: 0, y: 0 });
@@ -230,6 +231,30 @@ function App() {
         slider.value = '0';
       }
     }
+    
+    // --- Version Checking ---
+    const checkVersion = async () => {
+      try {
+        const response = await fetch('/version.json?t=' + new Date().getTime()); // Prevent caching
+        const data = await response.json();
+        const currentVersion = localStorage.getItem('appVersion');
+
+        if (currentVersion && data.version && currentVersion !== data.version) {
+          setNewVersionAvailable(true);
+        }
+        
+        if (data.version) {
+          localStorage.setItem('appVersion', data.version);
+        }
+      } catch (error) {
+        console.error("Could not check app version:", error);
+      }
+    };
+    
+    checkVersion(); // Check on initial load
+    const versionInterval = setInterval(checkVersion, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(versionInterval);
   }, []);
 
   useEffect(() => {
@@ -473,6 +498,11 @@ function App() {
           </form>
         )}
       </div>
+      {newVersionAvailable && (
+        <div className="version-banner" onClick={() => window.location.reload()}>
+          A new version is available. Click to update.
+        </div>
+      )}
       {isSimulating && (
         <div className="simulation-overlay">
           <p>Updating your plant's progress...</p>
